@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useBudgetStore } from '@/store/budgetStore';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatDate, formatTime } from '@/utils/formatters';
 import { getCalendarDayDiff, getRecentSalaryCycles, getSalaryCycleById } from '@/utils/salaryCycle';
 
 const COLORS = [
@@ -25,6 +26,7 @@ export default function Reports() {
   // Get last 12 salary cycles for the selector
   const cycleOptions = getRecentSalaryCycles(salaryCreditType, fixedCreditDate, 12);
   const [selectedCycleId, setSelectedCycleId] = useState(cycleOptions[0]?.id || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const cycleExpenses = getExpensesBySalaryCycle(selectedCycleId);
   const totalCycle = cycleExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -39,14 +41,21 @@ export default function Reports() {
       const expenses = cycleExpenses.filter((e) => e.categoryId === cat.id);
       const total = expenses.reduce((sum, e) => sum + e.amount, 0);
       return {
+        id: cat.id,
         name: cat.name,
         value: total,
         icon: cat.icon,
+        color: cat.color,
         count: expenses.length,
+        expenses: expenses.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        ),
       };
     })
     .filter((cat) => cat.value > 0)
     .sort((a, b) => b.value - a.value);
+
+  const selectedCategory = categoryData.find((cat) => cat.id === selectedCategoryId);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload?.length) {
@@ -162,6 +171,8 @@ export default function Reports() {
                     dataKey="value"
                     fill="#0ea5e9"
                     radius={[8, 8, 0, 0]}
+                    cursor="pointer"
+                    onClick={(data) => setSelectedCategoryId(data.id)}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -188,6 +199,8 @@ export default function Reports() {
                     paddingAngle={2}
                     dataKey="value"
                     label={({ icon }) => icon}
+                    cursor="pointer"
+                    onClick={(data) => setSelectedCategoryId(data.id)}
                   >
                     {categoryData.map((_, index) => (
                       <Cell
@@ -209,9 +222,11 @@ export default function Reports() {
               className="space-y-2"
             >
               {categoryData.map((cat, index) => (
-                <div
+                <button
                   key={cat.name}
-                  className="bg-dark-800 rounded-xl p-3 border border-dark-700 flex items-center justify-between shadow-md"
+                  type="button"
+                  onClick={() => setSelectedCategoryId(cat.id)}
+                  className="w-full bg-dark-800 rounded-xl p-3 border border-dark-700 flex items-center justify-between text-left shadow-md hover:border-accent-500/60 active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -235,7 +250,7 @@ export default function Reports() {
                       {((cat.value / totalCycle) * 100).toFixed(1)}%
                     </p>
                   </div>
-                </div>
+                </button>
               ))}
             </motion.div>
           </>
@@ -247,6 +262,71 @@ export default function Reports() {
           </div>
         )}
       </div>
+
+      {selectedCategory && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/70 px-0 sm:items-center sm:px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-h-[85vh] w-full overflow-hidden rounded-t-2xl border border-dark-700 bg-dark-900 shadow-2xl sm:mx-auto sm:max-w-md sm:rounded-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-dark-800 px-4 py-4">
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-white">
+                  {selectedCategory.icon} {selectedCategory.name}
+                </p>
+                <p className="text-xs text-dark-400">
+                  {selectedCategory.count} transaction{selectedCategory.count !== 1 ? 's' : ''} in this cycle
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryId(null)}
+                className="rounded-lg p-2 text-dark-400 hover:bg-dark-800 hover:text-white"
+                aria-label="Close transactions"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="border-b border-dark-800 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-dark-500">
+                  Total
+                </span>
+                <span className="text-lg font-bold text-white">
+                  {formatCurrency(selectedCategory.value)}
+                </span>
+              </div>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
+              <div className="space-y-2">
+                {selectedCategory.expenses.map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="rounded-xl border border-dark-800 bg-dark-950/60 p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-white">
+                          {expense.note || selectedCategory.name}
+                        </p>
+                        <p className="mt-1 text-xs text-dark-500">
+                          {formatDate(expense.date)} at {formatTime(expense.date)}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold text-white">
+                        {formatCurrency(expense.amount)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 }

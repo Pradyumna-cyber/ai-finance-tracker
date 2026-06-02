@@ -13,21 +13,21 @@ export default function CategorySelector({
   const { categories } = useCategoryStore();
 
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
       {categories.map((category) => (
         <button
           key={category.id}
           onClick={() => onSelect(category.id)}
           type="button"
           className={clsx(
-            'flex flex-col items-center gap-2 p-3 rounded-xl transition-all border-2',
+            'min-w-0 flex flex-col items-center gap-2 p-3 rounded-xl transition-all border-2',
             selectedId === category.id
               ? 'border-accent-500 bg-dark-800'
               : 'border-dark-700 bg-dark-800/50 hover:bg-dark-800'
           )}
         >
           <span className="text-2xl">{category.icon}</span>
-          <span className="text-xs font-medium text-dark-300 text-center truncate">
+          <span className="w-full min-w-0 truncate text-center text-xs font-medium text-dark-300">
             {category.name}
           </span>
         </button>

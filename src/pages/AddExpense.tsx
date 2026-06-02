@@ -15,6 +15,18 @@ const parseDateInput = (value: string) => {
   return new Date(year, month - 1, day);
 };
 
+const applyCurrentTime = (date: Date) => {
+  const now = new Date();
+  const dateWithTime = new Date(date);
+  dateWithTime.setHours(
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds()
+  );
+  return dateWithTime;
+};
+
 export default function AddExpense() {
   const navigate = useNavigate();
   const { addExpense } = useExpenseStore();
@@ -55,12 +67,14 @@ export default function AddExpense() {
 
     setIsLoading(true);
 
+    const expenseDate = applyCurrentTime(parseDateInput(date));
+
     const expense = {
       id: generateId(),
       amount: parsedAmount,
       categoryId: selectedCategory,
       note,
-      date: parseDateInput(date),
+      date: expenseDate,
       createdAt: new Date(),
     };
 
@@ -77,10 +91,10 @@ export default function AddExpense() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="fixed inset-0 bg-dark-950 z-50 flex flex-col"
+      className="fixed inset-0 w-full max-w-full overflow-x-hidden bg-dark-950 z-50 flex flex-col"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-4 border-b border-dark-800">
+      <div className="flex w-full min-w-0 items-center justify-between px-4 pt-6 pb-4 border-b border-dark-800">
         <h1 className="text-2xl font-bold text-white">Add Expense</h1>
         <button
           onClick={() => navigate(-1)}
@@ -91,7 +105,7 @@ export default function AddExpense() {
       </div>
 
       {/* Form */}
-      <form id="expense-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      <form id="expense-form" onSubmit={handleSubmit} className="flex-1 w-full min-w-0 overflow-y-auto overflow-x-hidden px-4 py-6 space-y-6">
         {/* Amount Input */}
         <div>
           <label className="text-sm font-medium text-dark-300 block mb-3">
