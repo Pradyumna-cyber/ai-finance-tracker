@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, LogOut, Zap, Settings as SettingsIcon, User } from 'lucide-react';
+import { Download, LogOut, Zap, User } from 'lucide-react';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useUserStore } from '@/store/userStore';
@@ -12,7 +11,6 @@ export default function Settings() {
   const { expenses } = useExpenseStore();
   const { categories } = useCategoryStore();
   const { user, completeOnboarding } = useUserStore();
-  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const handleExportData = () => {
     const data = {
@@ -55,7 +53,6 @@ export default function Settings() {
     label: string;
     description: string;
     action: () => void;
-    toggle?: boolean;
     danger?: boolean;
   }
 
@@ -65,18 +62,6 @@ export default function Settings() {
   }
 
   const settingsSections: SettingsSection[] = [
-    {
-      title: 'Appearance',
-      items: [
-        {
-          icon: SettingsIcon,
-          label: 'Dark Mode',
-          description: 'Always on for premium feel',
-          action: () => setIsDarkMode(!isDarkMode),
-          toggle: isDarkMode,
-        },
-      ],
-    },
     {
       title: 'Data',
       items: [
@@ -216,19 +201,6 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    {item.toggle !== undefined && (
-                      <div
-                        className={`w-10 h-6 rounded-full transition-colors ${
-                          item.toggle ? 'bg-accent-500' : 'bg-dark-700'
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded-full bg-white transition-transform transform ${
-                            item.toggle ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </div>
-                    )}
                   </motion.button>
                 );
               })}

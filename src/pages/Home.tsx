@@ -9,7 +9,6 @@ import SummaryCards from '@/components/dashboard/SummaryCards';
 import SalaryOverview from '@/components/dashboard/SalaryOverview';
 import AIInsights from '@/components/AIInsights';
 import FloatingAIButton from '@/components/ai/FloatingAIButton';
-import ThemeToggle from '@/components/layout/ThemeToggle';
 
 
 
@@ -45,9 +44,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.15),transparent_40%)]" />
           
          
-<div className="flex items-center justify-between">
-
-  <div>
+<div>
 
     <p className="text-xs font-medium text-zinc-500 mb-1">
       {getTimeGreeting()}, {user?.name || 'Friend'}
@@ -62,10 +59,6 @@ export default function Home() {
     ">
       Expense Copilot
     </h1>
-
-  </div>
-
-  <ThemeToggle />
 
 </div>
 

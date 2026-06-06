@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useCategoryStore } from "@/store/categoryStore";
 import {
@@ -18,6 +14,7 @@ import {
 
 import { useExpenseStore } from "@/store/expenseStore";
 import { useBudgetStore } from "@/store/budgetStore";
+import { useUserStore } from "@/store/userStore";
 
 import {
   analyzeExpenses,
@@ -124,12 +121,64 @@ const getSpendingHealth = (
   };
 };
 
+const getPersonalizedRecommendations = (
+  totalSpent: number,
+  monthlySalary: number,
+  categoryData: CategoryAnalysis[],
+  daysToSalary: number
+) => {
+  const recommendations: string[] = [];
+  const topCategory = categoryData[0];
+  const flexibleCategory = categoryData.find(
+    (item) =>
+      !["emi", "sip", "rd", "rent", "bills", "savings", "investment"].includes(
+        item.category.toLowerCase()
+      )
+  );
+  const remaining = Math.max(0, monthlySalary - totalSpent);
+  const spendingRatio =
+    monthlySalary > 0 ? totalSpent / monthlySalary : null;
+
+  if (spendingRatio !== null && spendingRatio >= 0.8) {
+    recommendations.push(
+      `You have used ${(spendingRatio * 100).toFixed(0)}% of your salary. Pause non-essential spending until payday.`
+    );
+  } else if (spendingRatio !== null && spendingRatio >= 0.5) {
+    recommendations.push(
+      `${formatCurrency(remaining)} remains from your salary. Keep the rest of this cycle focused on essentials.`
+    );
+  } else if (spendingRatio !== null) {
+    recommendations.push(
+      `You have kept ${(100 - spendingRatio * 100).toFixed(0)}% of your salary unspent this cycle.`
+    );
+  }
+
+  if (flexibleCategory && flexibleCategory.percentage >= 25) {
+    recommendations.push(
+      `${flexibleCategory.category} is ${flexibleCategory.percentage.toFixed(0)}% of your spending. Set a lower limit for it next cycle.`
+    );
+  } else if (topCategory) {
+    recommendations.push(
+      `${topCategory.category} is your largest expense at ${formatCurrency(topCategory.amount)}. Review it before adding similar purchases.`
+    );
+  }
+
+  if (monthlySalary > 0 && daysToSalary > 0) {
+    recommendations.push(
+      `A practical daily limit until salary day is ${formatCurrency(remaining / daysToSalary)}.`
+    );
+  }
+
+  return recommendations.slice(0, 3);
+};
+
 export default function AIAssistantDrawer({
   open,
   onClose,
 }: Props) {
   const { expenses } = useExpenseStore();
-const { categories } = useCategoryStore();
+  const { categories } = useCategoryStore();
+  const { user } = useUserStore();
   const {
     monthlySalary,
     salaryCreditType,
@@ -145,33 +194,11 @@ const { categories } = useCategoryStore();
     useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [isChatExpanded, setIsChatExpanded] = useState(true);
   const [chatMessages, setChatMessages] = useState<
     ChatMessage[]
   >([]);
-  const drawerScrollRef = useRef<HTMLDivElement | null>(
-    null
-  );
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }, [chatMessages, chatLoading]);
-
-  const scrollDrawerToChat = () => {
-    window.setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
-      });
-      drawerScrollRef.current?.scrollTo({
-        top: drawerScrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }, 80);
-  };
+  const chatRequestIdRef = useRef(0);
 
   const getExpensesToAnalyze = () => {
     const currentCycle = getSalaryCycleForDate(
@@ -255,12 +282,15 @@ Context:
 - Recent expenses: ${JSON.stringify(recentExpenses)}
 
 For buying questions, compare options like wait and save, pay fully, split payment, EMI/credit card, and what amount is safe to spend now.
+
+Reply in plain, human-friendly language. Keep the answer to 1-3 short sentences. Give the most useful answer first. Do not use headings, long lists, or repeat the question.
 `;
   };
 
   const handleAskQuestion = async (question: string) => {
     const cleanQuestion = question.trim();
     if (!cleanQuestion || chatLoading) return;
+    const requestId = ++chatRequestIdRef.current;
 
     const userMessage: ChatMessage = {
       id: `${Date.now()}-user`,
@@ -268,20 +298,18 @@ For buying questions, compare options like wait and save, pay fully, split payme
       content: cleanQuestion,
     };
 
-    setChatMessages((messages) => [
-      ...messages,
-      userMessage,
-    ]);
+    setChatMessages([userMessage]);
     setChatInput("");
     setChatLoading(true);
-    scrollDrawerToChat();
 
     try {
       const data = await askFinanceQuestion(
         buildQuestionPrompt(cleanQuestion)
       );
-      setChatMessages((messages) => [
-        ...messages,
+      if (requestId !== chatRequestIdRef.current) return;
+
+      setChatMessages([
+        userMessage,
         {
           id: `${Date.now()}-assistant`,
           role: "assistant",
@@ -291,12 +319,14 @@ For buying questions, compare options like wait and save, pay fully, split payme
         },
       ]);
     } catch (error) {
+      if (requestId !== chatRequestIdRef.current) return;
+
       const message =
         error instanceof Error
           ? error.message
           : "Failed to answer your question.";
-      setChatMessages((messages) => [
-        ...messages,
+      setChatMessages([
+        userMessage,
         {
           id: `${Date.now()}-assistant-error`,
           role: "assistant",
@@ -304,16 +334,23 @@ For buying questions, compare options like wait and save, pay fully, split payme
         },
       ]);
     } finally {
-      setChatLoading(false);
-      scrollDrawerToChat();
+      if (requestId === chatRequestIdRef.current) {
+        setChatLoading(false);
+      }
     }
   };
 
   const handleAnalyze = async () => {
     try {
+      chatRequestIdRef.current += 1;
       setLoading(true);
       setAnalysis(null);
       setCategoryData([]);
+      setChatMessages([]);
+      setChatInput("");
+      setChatLoading(false);
+      setShowAllQuestions(false);
+      setIsChatExpanded(false);
 
       if (!expenses.length) {
         setAnalysis({
@@ -434,7 +471,26 @@ const category =
 
   const visibleQuestions = showAllQuestions
     ? QUICK_QUESTIONS
-    : QUICK_QUESTIONS.slice(0, 3);
+    : QUICK_QUESTIONS.slice(0, 2);
+  const latestAssistantMessage = [...chatMessages]
+    .reverse()
+    .find((message) => message.role === "assistant");
+  const { currentCycle, expensesToAnalyze } =
+    getExpensesToAnalyze();
+  const totalSpent = expensesToAnalyze.reduce(
+    (sum, expense) => sum + expense.amount,
+    0
+  );
+  const daysToSalary = Math.max(
+    0,
+    getCalendarDayDiff(new Date(), currentCycle.nextSalaryDate)
+  );
+  const recommendations = getPersonalizedRecommendations(
+    totalSpent,
+    monthlySalary,
+    categoryData,
+    daysToSalary
+  );
 
   return (
     <div
@@ -450,12 +506,13 @@ const category =
       "
     >
       <div
-        ref={drawerScrollRef}
         className="
+          flex
           h-full
           w-full
           max-w-md
-          overflow-y-auto
+          flex-col
+          overflow-hidden
           border-l
           border-white/10
           bg-[#020617]
@@ -527,190 +584,9 @@ const category =
             : "Analyze My Spending"}
         </button>
 
-        {/* AI Chat */}
-
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4 text-cyan-400" />
-            <p className="text-sm font-semibold text-white">
-              Ask AI Copilot
-            </p>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {visibleQuestions.map((question) => (
-              <button
-                key={question}
-                type="button"
-                onClick={() => handleAskQuestion(question)}
-                disabled={chatLoading}
-                className="
-                  rounded-2xl
-                  border
-                  border-cyan-500/20
-                  bg-cyan-500/10
-                  px-3
-                  py-2
-                  text-left
-                  text-xs
-                  leading-relaxed
-                  text-cyan-100
-                  transition
-                  hover:border-cyan-300/40
-                  hover:bg-cyan-500/20
-                  disabled:opacity-60
-                "
-              >
-                {question}
-              </button>
-            ))}
-
-            {!showAllQuestions && (
-              <button
-                type="button"
-                onClick={() => setShowAllQuestions(true)}
-                className="
-                  inline-flex
-                  items-center
-                  gap-1
-                  rounded-2xl
-                  border
-                  border-white/10
-                  bg-white/5
-                  px-3
-                  py-2
-                  text-xs
-                  font-medium
-                  text-zinc-300
-                  transition
-                  hover:bg-white/10
-                "
-              >
-                More
-                <ChevronDown className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-
-          <div className="mt-4 min-h-48 max-h-[38vh] overflow-y-auto rounded-3xl border border-white/10 bg-[#060b18] p-3">
-            {chatMessages.length === 0 ? (
-              <div className="flex h-40 flex-col items-center justify-center text-center">
-                <MessageCircle className="h-6 w-6 text-cyan-300/70" />
-                <p className="mt-3 text-sm font-medium text-white">
-                  Start a finance chat
-                </p>
-                <p className="mt-1 max-w-56 text-xs leading-relaxed text-zinc-500">
-                  Pick a question above or type your own below.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {chatMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.role === "user"
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[86%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                        message.role === "user"
-                          ? "bg-cyan-500 text-white"
-                          : "border border-white/10 bg-white/5 text-zinc-200"
-                      }`}
-                    >
-                      {message.content}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {chatLoading && (
-              <div className="mt-3 flex justify-start">
-                <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                  {[0, 1, 2].map((dot) => (
-                    <motion.span
-                      key={dot}
-                      animate={{
-                        opacity: [0.35, 1, 0.35],
-                        y: [0, -3, 0],
-                      }}
-                      transition={{
-                        duration: 0.8,
-                        repeat: Infinity,
-                        delay: dot * 0.12,
-                      }}
-                      className="h-2 w-2 rounded-full bg-cyan-300"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div ref={chatEndRef} />
-          </div>
-
-          <form
-            className="mt-4 flex items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleAskQuestion(chatInput);
-            }}
-          >
-            <input
-              value={chatInput}
-              onChange={(event) =>
-                setChatInput(event.target.value)
-              }
-              placeholder="Ask about a purchase, EMI, savings..."
-              className="
-                min-w-0
-                flex-1
-                rounded-2xl
-                border
-                border-white/10
-                bg-white/5
-                px-4
-                py-3
-                text-sm
-                text-white
-                placeholder-zinc-500
-                outline-none
-                transition
-                focus:border-cyan-400/60
-              "
-            />
-
-            <button
-              type="submit"
-              disabled={!chatInput.trim() || chatLoading}
-              className="
-                flex
-                h-11
-                w-11
-                shrink-0
-                items-center
-                justify-center
-                rounded-2xl
-                bg-cyan-500
-                text-white
-                transition
-                hover:bg-cyan-400
-                disabled:bg-white/10
-                disabled:text-zinc-500
-              "
-              aria-label="Send question"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </form>
-        </div>
-
         {/* Insights */}
 
+        <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
         {loading && (
           <div className="mt-6 rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-5">
             <div className="flex items-center gap-3">
@@ -926,19 +802,14 @@ const category =
                 <TrendingUp className="h-4 w-4 text-cyan-400" />
 
                 <p className="text-sm font-semibold text-white">
-                  AI Recommendation
+                  {user?.name ? `${user.name}'s Recommendations` : "Your Recommendations"}
                 </p>
 
               </div>
 
             <div className="mt-4 space-y-3">
 
-  {[
-    "Entertainment spending is higher than usual.",
-    "Reduce unnecessary subscriptions this cycle.",
-    "Your spending is still within manageable limits.",
-    "Focus on improving discretionary spending.",
-  ].map((tip, index) => (
+  {recommendations.map((tip, index) => (
 
     <div
       key={index}
@@ -977,6 +848,99 @@ const category =
 
           </div>
         )}
+        </div>
+
+        {/* Bottom Chat */}
+
+        <div className="mt-4 shrink-0 rounded-3xl border border-white/10 bg-[#060b18] p-4 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => setIsChatExpanded((expanded) => !expanded)}
+            className="flex w-full items-center justify-between text-left"
+            aria-expanded={isChatExpanded}
+          >
+            <span className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-cyan-400" />
+              <span className="text-sm font-semibold text-white">
+                Ask AI Copilot
+              </span>
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-zinc-400 transition-transform ${
+                isChatExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {isChatExpanded && (
+            <div className="mt-3 flex max-h-28 flex-wrap gap-2 overflow-y-auto">
+              {visibleQuestions.map((question) => (
+                <button
+                  key={question}
+                  type="button"
+                  onClick={() => handleAskQuestion(question)}
+                  disabled={chatLoading}
+                  className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-left text-xs leading-relaxed text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-500/20 disabled:opacity-60"
+                >
+                  {question}
+                </button>
+              ))}
+
+              {!showAllQuestions && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllQuestions(true)}
+                  className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10"
+                >
+                  More
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {(chatLoading || latestAssistantMessage) && (
+            <div className="mb-3 mt-3 max-h-36 overflow-y-auto rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-sm leading-relaxed text-zinc-100">
+              {chatLoading ? (
+                <div className="flex items-center gap-1 py-1">
+                  {[0, 1, 2].map((dot) => (
+                    <motion.span
+                      key={dot}
+                      animate={{ opacity: [0.35, 1, 0.35], y: [0, -3, 0] }}
+                      transition={{ duration: 0.8, repeat: Infinity, delay: dot * 0.12 }}
+                      className="h-2 w-2 rounded-full bg-cyan-300"
+                    />
+                  ))}
+                </div>
+              ) : (
+                latestAssistantMessage?.content
+              )}
+            </div>
+          )}
+
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleAskQuestion(chatInput);
+            }}
+          >
+            <input
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+              placeholder="Ask about spending, EMI, savings..."
+              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-cyan-400/60"
+            />
+            <button
+              type="submit"
+              disabled={!chatInput.trim() || chatLoading}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500 text-white transition hover:bg-cyan-400 disabled:bg-white/10 disabled:text-zinc-500"
+              aria-label="Send question"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
