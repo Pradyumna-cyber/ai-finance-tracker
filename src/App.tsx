@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/store/userStore';
@@ -11,9 +11,11 @@ import Categories from '@/pages/Categories';
 import AskAIPage from '@/pages/AskAIPage';
 import Onboarding from '@/pages/Onboarding';
 import SalaryReviewModal from '@/components/dashboard/SalaryReviewModal';
+import LoadingSplash from '@/components/LoadingSplash';
 
 function App() {
   const { isOnboarded } = useUserStore();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Register service worker
@@ -22,9 +24,15 @@ function App() {
         // Service worker registration failed, app will work without PWA
       });
     }
+
+    const timer = window.setTimeout(() => setIsLoading(false), 1200);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  // Show onboarding if user hasn't completed it
+  if (isLoading) {
+    return <LoadingSplash />;
+  }
+
   if (!isOnboarded()) {
     return <Onboarding />;
   }

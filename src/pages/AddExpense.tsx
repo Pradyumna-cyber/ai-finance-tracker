@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Info, Receipt } from 'lucide-react';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useCategoryStore } from '@/store/categoryStore';
+import { useReminderStore } from '@/store/reminderStore';
 import { formatDateShort, generateId } from '@/utils/formatters';
 import { useBudgetStore } from '@/store/budgetStore';
 import { getSalaryCycleForDate } from '@/utils/salaryCycle';
@@ -32,6 +33,7 @@ export default function AddExpense() {
   const { addExpense } = useExpenseStore();
   const { categories, initializeDefaultCategories } = useCategoryStore();
   const { salaryCreditType, fixedCreditDate } = useBudgetStore();
+  const { completeTodayReminders } = useReminderStore();
 
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || '');
@@ -79,6 +81,7 @@ export default function AddExpense() {
     };
 
     addExpense(expense);
+    completeTodayReminders();
 
     setTimeout(() => {
       setIsLoading(false);
@@ -168,18 +171,23 @@ export default function AddExpense() {
         </div>
 
         <motion.button
-          whileTap={{ scale: 0.95 }}
+          whileTap={{ scale: isLoading ? 1 : 0.95 }}
           type="submit"
           form="expense-form"
           disabled={isLoading}
-          className="primary-button w-full"
+          className="primary-button w-full overflow-hidden"
         >
           {isLoading ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-            />
+            <div className="relative flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-[#0f172a] text-white">
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-violet-500/15 to-blue-500/20 opacity-90" />
+              <div className="absolute inset-0 ring-[1px] ring-cyan-400/10 blur-sm" />
+              <div className="absolute -left-6 top-1/2 h-16 w-16 -translate-y-1/2 rounded-full bg-cyan-400/30 blur-2xl" />
+              <div className="absolute right-0 top-8 h-20 w-20 rounded-full bg-violet-400/10 blur-3xl" />
+              <span className="relative z-10 flex items-center gap-2 text-sm font-semibold tracking-[0.18em] uppercase text-white">
+                <span className="flex h-3 w-3 rounded-full bg-cyan-300 animate-pulse" />
+                Saving your money...
+              </span>
+            </div>
           ) : (
             <>
               <Check size={20} />

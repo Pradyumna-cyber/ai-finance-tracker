@@ -215,27 +215,27 @@ export default function Settings() {
           </p>
         </motion.div>
 
-        {/* Future AI Integration Section */}
-        <motion.div
+        {/* AI Integration Section */}
+        {/* <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.35 }}
           className="surface-card mt-6 border-violet-400/15 px-4 py-4"
         >
           <p className="text-xs font-semibold text-accent-400 uppercase mb-2">
-            Coming Soon
+            AI updates
           </p>
           <p className="text-sm font-semibold text-white mb-2">
             AI-Powered Insights
           </p>
           <ul className="space-y-1 text-xs text-dark-300">
-            <li>✓ Smart expense categorization</li>
             <li>✓ Budget predictions</li>
             <li>✓ Spending insights & anomaly detection</li>
             <li>✓ AI financial coach</li>
-            <li>✓ Voice-based expense entry</li>
+            <li className="text-slate-400">• Smart expense categorization (coming soon)</li>
+            <li className="text-slate-400">• Voice-based expense entry (coming soon)</li>
           </ul>
-        </motion.div>
+        </motion.div> */}
         </div>
         <div>
           <div className="surface-card p-5">

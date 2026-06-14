@@ -4,6 +4,7 @@ import { BarChart3, Home, Plus, Settings, Shapes, Sparkles } from 'lucide-react'
 import clsx from 'clsx';
 import BottomNavigation from './BottomNavigation';
 import BrandMark from './BrandMark';
+import ReminderToast from '@/components/ReminderToast';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -53,6 +54,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </aside>
 
       <main className={`min-w-0 flex-1 overflow-y-auto ${!isAddPage ? 'pb-nav lg:pb-0' : ''}`}>
+        <ReminderToast />
         {children}
       </main>
 
