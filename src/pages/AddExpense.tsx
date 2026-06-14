@@ -225,6 +225,44 @@ export default function AddExpense() {
       </div>
 
       <form id="expense-form" onSubmit={handleSubmit} className="surface-card space-y-6 p-5 sm:p-7">
+        <div className="soft-panel space-y-4 p-4 text-slate-700">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-slate-900">Voice Assistant</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Tap the mic and just say the amount, category, and note, for example “Spent 18 on coffee for client meeting.”
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Date and time are added automatically.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={isListening ? stopVoiceInput : startVoiceInput}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+            >
+              {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+              {isListening ? 'Listening…' : 'Use voice'}
+            </button>
+          </div>
+
+          {voiceError ? (
+            <p className="rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {voiceError}
+            </p>
+          ) : null}
+
+          {transcript ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Voice transcript</p>
+              <p className="mt-2 text-sm text-slate-900">“{transcript}”</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Parsed amount: <span className="font-semibold">{amount || '—'}</span>, category: <span className="font-semibold">{categories.find((cat) => cat.id === selectedCategory)?.name || '—'}</span>
+              </p>
+            </div>
+          ) : null}
+        </div>
+
         {/* Amount Input */}
         <div>
           <label className="field-label">
@@ -281,44 +319,6 @@ export default function AddExpense() {
         <div className="soft-panel flex items-start gap-3 p-3 text-xs leading-5 text-slate-500">
           <Receipt size={16} className="mt-0.5 shrink-0 text-violet-300" />
           Your note appears in reports and exported statements, so future-you knows exactly what the spend was for.
-        </div>
-
-        <div className="soft-panel space-y-4 p-4 text-slate-700">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-semibold text-slate-900">Voice Assistant</p>
-              <p className="mt-1 text-sm text-slate-500">
-                Tap the mic and just say the amount, category, and note, for example “Spent 18 on coffee for client meeting.”
-              </p>
-              <p className="mt-1 text-sm text-slate-500">
-                Date and time are added automatically.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={isListening ? stopVoiceInput : startVoiceInput}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-            >
-              {isListening ? <MicOff size={16} /> : <Mic size={16} />}
-              {isListening ? 'Listening…' : 'Use voice'}
-            </button>
-          </div>
-
-          {voiceError ? (
-            <p className="rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {voiceError}
-            </p>
-          ) : null}
-
-          {transcript ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Voice transcript</p>
-              <p className="mt-2 text-sm text-slate-900">“{transcript}”</p>
-              <p className="mt-2 text-xs text-slate-500">
-                Parsed amount: <span className="font-semibold">{amount || '—'}</span>, category: <span className="font-semibold">{categories.find((cat) => cat.id === selectedCategory)?.name || '—'}</span>
-              </p>
-            </div>
-          ) : null}
         </div>
 
         <motion.button
