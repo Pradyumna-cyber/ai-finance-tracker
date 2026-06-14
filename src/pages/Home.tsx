@@ -1,20 +1,24 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Bell, CalendarDays } from 'lucide-react';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useUserStore } from '@/store/userStore';
+import { useBudgetStore } from '@/store/budgetStore';
+import { getSalaryCycleForDate } from '@/utils/salaryCycle';
+import { formatDateShort } from '@/utils/formatters';
 import RecentTransactions from '@/components/dashboard/RecentTransactions';
 import ExpensePieChart from '@/components/charts/ExpensePieChart';
 import ExpenseTrendChart from '@/components/charts/ExpenseTrendChart';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import SalaryOverview from '@/components/dashboard/SalaryOverview';
-import AIInsights from '@/components/AIInsights';
-import FloatingAIButton from '@/components/ai/FloatingAIButton';
 
 
 
 export default function Home() {
   const { initializeDefaultCategories } = useCategoryStore();
   const { user } = useUserStore();
+  const { salaryCreditType, fixedCreditDate } = useBudgetStore();
+  const cycle = getSalaryCycleForDate(new Date(), salaryCreditType, fixedCreditDate);
 
   useEffect(() => {
     initializeDefaultCategories();
@@ -32,53 +36,48 @@ export default function Home() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className=" min-h-screen bg-white dark:bg-[#020617]
- relative overflow-hidden"
+      className="app-page"
     >
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-gradient-to-b from-dark-900 to-transparent px-4 pt-6 pb-4 border-b border-dark-800">
-        <motion.div
+      <div className="page-shell">
+        <motion.header
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex items-center justify-between gap-4"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.15),transparent_40%)]" />
-          
-         
-<div>
-
-    <p className="text-xs font-medium text-zinc-500 mb-1">
-      {getTimeGreeting()}, {user?.name || 'Friend'}
-    </p>
-
-    <h1 className="
-      text-3xl
-      font-bold
-      text-zinc-900
-
-      dark:text-zinc-900 dark:text-white
-    ">
-      Expense Copilot
-    </h1>
-
-</div>
-
-
-        </motion.div>
-      </div>
-
-      {/* Content */}
-     <div className="space-y-4 px-4 py-4 pb-24"> 
-      <SummaryCards /> 
-      
-      <SalaryOverview /> 
-      
-      <div className="grid gap-4 lg:grid-cols-2">
-         <ExpenseTrendChart /> 
-         <ExpensePieChart />
-          </div> 
-          <RecentTransactions /> 
+          <div>
+            <h1 className="text-lg font-semibold text-white sm:text-xl">
+              {getTimeGreeting()}, {user?.name || 'Friend'} <span className="text-base">👋</span>
+            </h1>
+            <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500">
+              <CalendarDays size={13} className="text-blue-400" />
+              <span>{cycle.name}</span>
+              <span className="text-slate-700">•</span>
+              <span>{formatDateShort(cycle.startDate)} to {formatDateShort(cycle.endDate)}</span>
+            </div>
           </div>
-          <FloatingAIButton />
+          <div className="flex items-center gap-3">
+            <button type="button" className="soft-panel hidden h-10 w-10 items-center justify-center text-slate-400 hover:text-white sm:flex" aria-label="Notifications">
+              <Bell size={18} />
+            </button>
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-blue-500/25 to-violet-500/20 text-sm font-bold text-cyan-100">
+              {(user?.name || 'F').charAt(0).toUpperCase()}
+            </div>
+          </div>
+        </motion.header>
+
+        <div className="space-y-3">
+          <SummaryCards />
+          <div className="grid gap-3 xl:grid-cols-[1fr_1.1fr]">
+            <SalaryOverview />
+            <ExpenseTrendChart />
+          </div>
+          <div className="grid gap-3 xl:grid-cols-[1fr_1.15fr]">
+            <ExpensePieChart />
+            <RecentTransactions />
+          </div>
+        </div>
+      </div>
+      {/* Floating AI button removed — use Ask AI page from navigation */}
     </motion.div>
   );
 }

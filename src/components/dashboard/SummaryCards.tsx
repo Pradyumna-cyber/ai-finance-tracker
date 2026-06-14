@@ -1,22 +1,24 @@
-import { Wallet, CreditCard, PiggyBank, Activity } from "lucide-react";
+import { Wallet, CreditCard, PiggyBank, Activity, CalendarClock, Hash, Gauge, TrendingDown } from "lucide-react";
 import { useBudgetStore } from "@/store/budgetStore";
 import { useExpenseStore } from "@/store/expenseStore";
+import { getCalendarDayDiff, getSalaryCycleForDate } from "@/utils/salaryCycle";
+import { formatCurrency } from "@/utils/formatters";
 
 export default function SummaryCards() {
-  const { monthlySalary } = useBudgetStore();
+  const { monthlySalary, salaryCreditType, fixedCreditDate, getDisposableBudget } = useBudgetStore();
+  const { getExpensesBySalaryCycle } = useExpenseStore();
+  const cycle = getSalaryCycleForDate(new Date(), salaryCreditType, fixedCreditDate);
+  const cycleExpenses = getExpensesBySalaryCycle(cycle.id);
+  const totalSpent = cycleExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const disposableBudget = getDisposableBudget();
+  const daysLeft = Math.max(0, getCalendarDayDiff(new Date(), cycle.nextSalaryDate));
+  const avgDailySpend = totalSpent / Math.max(1, getCalendarDayDiff(cycle.startDate, new Date()) + 1);
 
-  const { expenses } = useExpenseStore();
-
-  const totalSpent = expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
-
-  const remainingBalance = monthlySalary - totalSpent;
+  const remainingBalance = disposableBudget - totalSpent;
 
   const spentPercentage =
-    monthlySalary > 0
-      ? (totalSpent / monthlySalary) * 100
+    disposableBudget > 0
+      ? (totalSpent / disposableBudget) * 100
       : 0;
 
   const healthStatus =
@@ -35,22 +37,25 @@ export default function SummaryCards() {
 
   const cards = [
     {
-      title: "Current Salary",
-      value: `₹${monthlySalary.toLocaleString()}`,
+      title: "Monthly Salary",
+      value: formatCurrency(monthlySalary),
       icon: Wallet,
-      sub: "Monthly income",
+      sub: "Income this cycle",
+      tone: "cyan",
     },
     {
       title: "Total Spent",
-      value: `₹${totalSpent.toLocaleString()}`,
+      value: formatCurrency(totalSpent),
       icon: CreditCard,
       sub: `${spentPercentage.toFixed(0)}% used`,
+      tone: "rose",
     },
     {
       title: "Remaining",
-      value: `₹${remainingBalance.toLocaleString()}`,
+      value: formatCurrency(remainingBalance),
       icon: PiggyBank,
-      sub: "Available balance",
+      sub: "Disposable balance",
+      tone: "emerald",
     },
     {
       title: "Financial Health",
@@ -58,47 +63,72 @@ export default function SummaryCards() {
       icon: Activity,
       sub: "Budget status",
       color: healthColor,
+      tone: "violet",
+    },
+    {
+      title: "Transactions",
+      value: cycleExpenses.length.toString(),
+      icon: Hash,
+      sub: "Recorded this cycle",
+      tone: "cyan",
+    },
+    {
+      title: "Avg Daily Spend",
+      value: formatCurrency(avgDailySpend),
+      icon: TrendingDown,
+      sub: "Current pace",
+      tone: "violet",
+    },
+    {
+      title: "Budget Used",
+      value: `${spentPercentage.toFixed(0)}%`,
+      icon: Gauge,
+      sub: "Of disposable budget",
+      tone: "emerald",
+    },
+    {
+      title: "Until Salary",
+      value: `${daysLeft} Days`,
+      icon: CalendarClock,
+      sub: "Next salary cycle",
+      tone: "rose",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-8">
       {cards.map((card) => {
         const Icon = card.icon;
 
         return (
           <div
             key={card.title}
-            className="
-              rounded-3xl
-              border
-              border-white/10
-              bg-white/5
-              backdrop-blur-xl
-              p-4
-              transition-all
-              duration-300
-              hover:border-cyan-400/20
-              hover:bg-white/[0.07]
-            "
+            className="surface-card surface-card-hover p-3"
           >
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-[11px] uppercase tracking-wider text-zinc-400">
+              <p className="eyebrow">
                 {card.title}
               </p>
 
-              <Icon className="h-4 w-4 text-zinc-400" />
+              <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                card.tone === 'cyan' ? 'bg-cyan-500/10 text-cyan-300' :
+                card.tone === 'rose' ? 'bg-rose-500/10 text-rose-300' :
+                card.tone === 'emerald' ? 'bg-emerald-500/10 text-emerald-300' :
+                'bg-violet-500/10 text-violet-300'
+              }`}>
+                <Icon className="h-3.5 w-3.5" />
+              </div>
             </div>
 
             <h2
-              className={`text-xl font-bold tracking-tight text-white ${
+              className={`text-base font-bold tracking-tight text-white ${
                 card.color || ""
               }`}
             >
               {card.value}
             </h2>
 
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 truncate text-[10px] text-slate-500">
               {card.sub}
             </p>
           </div>

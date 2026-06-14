@@ -3,31 +3,25 @@ import { CalendarDays, Sparkles } from "lucide-react";
 
 import { useBudgetStore } from "@/store/budgetStore";
 import { useExpenseStore } from "@/store/expenseStore";
+import { getSalaryCycleForDate } from "@/utils/salaryCycle";
 
 export default function SalaryOverview() {
-  const { monthlySalary } = useBudgetStore();
+  const { monthlySalary, salaryCreditType, fixedCreditDate, getActiveDeductionsTotal, getDisposableBudget } = useBudgetStore();
+  const { getTotalForSalaryCycle } = useExpenseStore();
+  const cycle = getSalaryCycleForDate(new Date(), salaryCreditType, fixedCreditDate);
+  const totalSpent = getTotalForSalaryCycle(cycle.id);
+  const disposableBudget = getDisposableBudget();
+  const deductions = getActiveDeductionsTotal();
 
-  const { expenses } = useExpenseStore();
-
-  const totalSpent = expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
-
-  const remainingBalance = monthlySalary - totalSpent;
+  const remainingBalance = disposableBudget - totalSpent;
 
   const spentPercentage =
-    monthlySalary > 0
-      ? (totalSpent / monthlySalary) * 100
+    disposableBudget > 0
+      ? (totalSpent / disposableBudget) * 100
       : 0;
 
   const today = new Date();
-
-  const nextSalaryDate = new Date(
-    today.getFullYear(),
-    today.getMonth() + 1,
-    1
-  );
+  const nextSalaryDate = cycle.nextSalaryDate;
 
   const daysLeft = Math.max(
     Math.ceil(
@@ -46,31 +40,21 @@ export default function SalaryOverview() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="
-        rounded-3xl
-        border
-        border-white/10
-        bg-gradient-to-br
-        from-[#111827]
-        to-[#0f172a]
-        p-5
-        shadow-2xl
-      "
+      className="surface-card relative overflow-hidden p-4"
     >
-      {/* Header */}
-
+      <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-cyan-500/10 blur-3xl" />
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wider text-zinc-400">
-            Salary Cycle
+          <p className="eyebrow">
+            Salary overview
           </p>
 
-          <h2 className="mt-1 text-2xl font-bold text-white">
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
             ₹{remainingBalance.toLocaleString()}
           </h2>
 
-          <p className="mt-1 text-sm text-zinc-400">
-            Remaining balance
+          <p className="mt-1 text-sm text-slate-400">
+            Available after recurring deductions
           </p>
         </div>
 
@@ -81,15 +65,15 @@ export default function SalaryOverview() {
             gap-2
             rounded-2xl
             border
-            border-white/10
-            bg-white/5
+            border-cyan-400/15
+            bg-cyan-500/[0.06]
             px-3
             py-2
           "
         >
           <CalendarDays className="h-4 w-4 text-cyan-400" />
 
-          <span className="text-sm text-white">
+          <span className="text-xs font-semibold text-cyan-100">
             {daysLeft} days left
           </span>
         </div>
@@ -97,8 +81,8 @@ export default function SalaryOverview() {
 
       {/* Progress */}
 
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between text-xs text-zinc-400">
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
           <span>{spentPercentage.toFixed(0)}% spent</span>
 
           <span>
@@ -106,7 +90,7 @@ export default function SalaryOverview() {
           </span>
         </div>
 
-        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="h-2 overflow-hidden rounded-full bg-[#030814]">
           <motion.div
             initial={{ width: 0 }}
             animate={{
@@ -126,49 +110,47 @@ export default function SalaryOverview() {
 
       {/* Metrics */}
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div
           className="
             rounded-2xl
             border
-            border-white/10
-            bg-white/5
+            border-white/[0.07]
+            bg-white/[0.035]
             p-3
           "
         >
-          <p className="text-xs text-zinc-400">
-            Safe Daily Spend
+          <p className="text-xs text-slate-500">
+            Monthly salary
           </p>
-
           <h3 className="mt-1 text-lg font-semibold text-white">
-            ₹{safeDailySpend.toFixed(0)}
+            ₹{monthlySalary.toLocaleString()}
           </h3>
-
-          <p className="text-xs text-zinc-500">
-            per day
-          </p>
         </div>
 
         <div
           className="
             rounded-2xl
             border
-            border-white/10
-            bg-white/5
+            border-white/[0.07]
+            bg-white/[0.035]
             p-3
           "
         >
-          <p className="text-xs text-zinc-400">
-            Total Spent
+          <p className="text-xs text-slate-500">
+            Deductions
           </p>
-
           <h3 className="mt-1 text-lg font-semibold text-white">
-            ₹{totalSpent.toLocaleString()}
+            ₹{deductions.toLocaleString()}
           </h3>
-
-          <p className="text-xs text-zinc-500">
-            this cycle
-          </p>
+        </div>
+        <div className="soft-panel p-3">
+          <p className="text-xs text-slate-500">Safe daily spend</p>
+          <h3 className="mt-1 text-lg font-semibold text-white">₹{safeDailySpend.toFixed(0)}</h3>
+        </div>
+        <div className="soft-panel p-3">
+          <p className="text-xs text-slate-500">Spent this cycle</p>
+          <h3 className="mt-1 text-lg font-semibold text-white">₹{totalSpent.toLocaleString()}</h3>
         </div>
       </div>
 
@@ -176,25 +158,27 @@ export default function SalaryOverview() {
 
       <div
         className="
-          mt-5
+          mt-4
           flex
           items-start
           gap-3
           rounded-2xl
           border
-          border-cyan-500/20
-          bg-cyan-500/10
+          border-violet-400/15
+          bg-gradient-to-r from-violet-500/[0.08] to-cyan-500/[0.06]
           p-3
         "
       >
-        <Sparkles className="mt-0.5 h-4 w-4 text-cyan-400" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
+          <Sparkles className="h-4 w-4 text-violet-300" />
+        </div>
 
         <div>
-          <p className="text-sm font-medium text-cyan-300">
-            AI Insight
+          <p className="text-sm font-semibold text-violet-200">
+            Copilot pulse
           </p>
 
-          <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+          <p className="mt-1 text-sm leading-relaxed text-slate-400">
             You are currently spending within safe
             limits this salary cycle.
           </p>

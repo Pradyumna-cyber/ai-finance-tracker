@@ -14,6 +14,8 @@ export default function FloatingAIButton() {
           fixed
           bottom-24
           right-4
+          lg:bottom-8
+          lg:right-8
           z-50
           flex
           items-center

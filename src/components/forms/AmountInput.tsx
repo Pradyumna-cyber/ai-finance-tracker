@@ -21,8 +21,8 @@ export default function AmountInput({ value, onChange }: AmountInputProps) {
   };
 
   return (
-    <div className="relative">
-      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-dark-400">
+    <div className="relative overflow-hidden rounded-2xl border border-cyan-400/15 bg-gradient-to-r from-blue-500/[0.08] to-cyan-500/[0.04] p-1">
+      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-bold text-cyan-300">
         ₹
       </span>
       <input
@@ -32,7 +32,7 @@ export default function AmountInput({ value, onChange }: AmountInputProps) {
         onChange={handleChange}
         placeholder="0"
         inputMode="decimal"
-        className="w-full pl-10 pr-4 py-4 text-4xl font-bold text-white bg-dark-800 border-2 border-dark-700 rounded-xl focus:outline-none focus:border-accent-500 transition-colors placeholder-dark-600"
+        className="w-full rounded-xl border border-transparent bg-[#07111f]/80 py-5 pl-11 pr-4 text-4xl font-bold tracking-tight text-white outline-none transition placeholder:text-slate-700 focus:border-cyan-400/30"
       />
     </div>
   );

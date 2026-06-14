@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Download, LogOut, Zap, User } from 'lucide-react';
+import { ChevronRight, Download, LogOut, Shapes, User } from 'lucide-react';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useUserStore } from '@/store/userStore';
@@ -10,7 +10,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { expenses } = useExpenseStore();
   const { categories } = useCategoryStore();
-  const { user, completeOnboarding } = useUserStore();
+  const { user } = useUserStore();
 
   const handleExportData = () => {
     const data = {
@@ -84,7 +84,7 @@ export default function Settings() {
       title: 'Management',
       items: [
         {
-          icon: Zap,
+          icon: Shapes,
           label: 'Manage Categories',
           description: `${categories.length} categories`,
           action: () => navigate('/categories'),
@@ -109,24 +109,26 @@ export default function Settings() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-dark-950 pb-24"
+      className="app-page"
     >
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-gradient-to-b from-dark-900 to-transparent px-4 pt-6 pb-4 border-b border-dark-800">
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
+      <div className="page-shell max-w-5xl">
+      <div className="mb-6">
+        <p className="eyebrow">Control center</p>
+        <h1 className="page-title mt-1">Settings</h1>
+        <p className="mt-2 text-sm text-slate-500">Manage salary, categories, data, and your Expense Copilot profile.</p>
       </div>
 
-      {/* Content */}
-      <div className="space-y-4 px-4 py-4">
+      <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+        <div className="space-y-5">
         {/* User Profile Card */}
         {user && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/30 rounded-2xl p-4"
+            className="surface-card p-5"
           >
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center text-2xl font-bold">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-blue-500/25 to-violet-500/20 text-2xl font-bold text-cyan-100">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div>
@@ -136,16 +138,6 @@ export default function Settings() {
             </div>
           </motion.div>
         )}
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="bg-dark-800 rounded-2xl border border-dark-700 p-4"
-        >
-          <h2 className="text-lg font-bold text-white mb-3">Budget & Deductions</h2>
-          <BudgetSettings />
-        </motion.div>
 
         {settingsSections.map((section, sectionIndex) => (
           <motion.div
@@ -158,7 +150,7 @@ export default function Settings() {
               {section.title}
             </h2>
 
-            <div className="space-y-2">
+            <div className="surface-card overflow-hidden">
               {section.items.map((item, itemIndex) => {
                 const Icon = item.icon;
                 return (
@@ -168,10 +160,10 @@ export default function Settings() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: (sectionIndex * 0.1) + (itemIndex * 0.05) }}
                     onClick={item.action}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all group ${
+                    className={`group flex w-full items-center justify-between border-b border-white/[0.06] p-4 text-left transition-all last:border-b-0 ${
                       item.danger
-                        ? 'bg-red-500/10 border-red-500/20 hover:border-red-500/40 hover:bg-red-500/20'
-                        : 'bg-dark-800 border-dark-700 hover:border-dark-600 hover:bg-dark-800/80'
+                        ? 'hover:bg-red-500/[0.07]'
+                        : 'hover:bg-white/[0.035]'
                     }`}
                   >
                     <div className="flex items-center gap-3 text-left">
@@ -179,7 +171,7 @@ export default function Settings() {
                         className={`p-2 rounded-lg ${
                           item.danger
                             ? 'bg-red-500/20'
-                            : 'bg-dark-700 group-hover:bg-dark-600'
+                            : 'bg-white/[0.05] group-hover:bg-white/[0.08]'
                         }`}
                       >
                         <Icon
@@ -200,6 +192,7 @@ export default function Settings() {
                         </p>
                       </div>
                     </div>
+                    <ChevronRight size={16} className="text-slate-700" />
 
                   </motion.button>
                 );
@@ -213,7 +206,7 @@ export default function Settings() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-8 px-4 py-4 bg-dark-800/50 rounded-xl border border-dark-700 text-center"
+          className="surface-card px-4 py-4 text-center"
         >
           <p className="text-xs text-dark-500 mb-2">AI Expense Copilot</p>
           <p className="text-lg font-bold text-white">v1.0.0</p>
@@ -227,7 +220,7 @@ export default function Settings() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.35 }}
-          className="mt-6 px-4 py-4 bg-gradient-to-br from-accent-500/10 to-accent-600/5 rounded-xl border border-accent-500/30"
+          className="surface-card mt-6 border-violet-400/15 px-4 py-4"
         >
           <p className="text-xs font-semibold text-accent-400 uppercase mb-2">
             Coming Soon
@@ -243,6 +236,17 @@ export default function Settings() {
             <li>✓ Voice-based expense entry</li>
           </ul>
         </motion.div>
+        </div>
+        <div>
+          <div className="surface-card p-5">
+            <div className="mb-4">
+              <p className="eyebrow">Money setup</p>
+              <h2 className="section-title mt-1">Budget & deductions</h2>
+            </div>
+            <BudgetSettings />
+          </div>
+        </div>
+      </div>
       </div>
     </motion.div>
   );

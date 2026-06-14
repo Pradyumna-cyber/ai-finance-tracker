@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { CalendarRange, Download, Receipt, Wallet, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useCategoryStore } from '@/store/categoryStore';
@@ -18,20 +18,49 @@ const COLORS = [
   '#6366f1',
 ];
 
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateInput = (value: string, endOfDay = false) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(
+    year,
+    month - 1,
+    day,
+    endOfDay ? 23 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 999 : 0
+  );
+};
+
+const escapeCsvValue = (value: string | number) =>
+  `"${String(value).replace(/"/g, '""')}"`;
+
 export default function Reports() {
-  const { getExpensesBySalaryCycle } = useExpenseStore();
+  const { expenses, getExpensesBySalaryCycle } = useExpenseStore();
   const { categories } = useCategoryStore();
-  const { salaryCreditType, fixedCreditDate } = useBudgetStore();
+  const { monthlySalary, salaryCreditType, fixedCreditDate } = useBudgetStore();
 
   // Get last 12 salary cycles for the selector
   const cycleOptions = getRecentSalaryCycles(salaryCreditType, fixedCreditDate, 12);
   const [selectedCycleId, setSelectedCycleId] = useState(cycleOptions[0]?.id || '');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
+  const selectedCycleDetails = getSalaryCycleById(selectedCycleId, salaryCreditType, fixedCreditDate);
+  const [statementStartDate, setStatementStartDate] = useState(
+    formatDateInput(selectedCycleDetails.startDate)
+  );
+  const [statementEndDate, setStatementEndDate] = useState(
+    formatDateInput(selectedCycleDetails.endDate)
+  );
+
   const cycleExpenses = getExpensesBySalaryCycle(selectedCycleId);
   const totalCycle = cycleExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-  const selectedCycleDetails = getSalaryCycleById(selectedCycleId, salaryCreditType, fixedCreditDate);
 
   const cycleDays = Math.max(1, getCalendarDayDiff(selectedCycleDetails.startDate, selectedCycleDetails.nextSalaryDate));
 
@@ -57,6 +86,58 @@ export default function Reports() {
 
   const selectedCategory = categoryData.find((cat) => cat.id === selectedCategoryId);
 
+  const exportStatement = () => {
+    if (!statementStartDate || !statementEndDate) {
+      alert('Please select both statement dates.');
+      return;
+    }
+
+    const startDate = parseDateInput(statementStartDate);
+    const endDate = parseDateInput(statementEndDate, true);
+
+    if (startDate > endDate) {
+      alert('The statement start date must be before the end date.');
+      return;
+    }
+
+    const categoryMap = new Map(categories.map((category) => [category.id, category]));
+    const statementExpenses = expenses
+      .filter((expense) => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate >= startDate && expenseDate <= endDate;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const statementTotal = statementExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+    const rows = [
+      ['Expense Statement'],
+      ['Statement Period', `${formatDate(startDate)} to ${formatDate(endDate)}`],
+      ['Monthly Salary', monthlySalary],
+      ['Statement Total Spent', statementTotal],
+      [],
+      ['Date', 'Category', 'Note', 'Price'],
+      ...statementExpenses.map((expense) => [
+        formatDate(expense.date),
+        categoryMap.get(expense.categoryId)?.name || 'Unknown',
+        expense.note || '',
+        expense.amount,
+      ]),
+    ];
+
+    const csv = `\uFEFF${rows
+      .map((row) => row.map((value) => escapeCsvValue(value)).join(','))
+      .join('\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `expense-statement-${statementStartDate}-to-${statementEndDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+  };
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload?.length) {
       return (
@@ -75,14 +156,16 @@ export default function Reports() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-dark-950 pb-24"
+      className="app-page"
     >
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-gradient-to-b from-dark-900 to-transparent px-4 pt-6 pb-4 border-b border-dark-800">
-        <h1 className="text-2xl font-bold text-white mb-4">Reports</h1>
+      <div className="page-shell">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="eyebrow">Financial analytics</p>
+          <h1 className="page-title mt-1">Reports</h1>
+        </div>
         
-        {/* Cycle Selector */}
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-none">
+        <div className="flex max-w-full gap-2 overflow-x-auto pb-2 scrollbar-none">
           {cycleOptions.map((cycle) => {
             const cycleDateParts = cycle.id.split('-');
             const cycleMonth = new Date(parseInt(cycleDateParts[0]), parseInt(cycleDateParts[1]) - 1, 1);
@@ -92,8 +175,8 @@ export default function Reports() {
                 onClick={() => setSelectedCycleId(cycle.id)}
                 className={`px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
                   selectedCycleId === cycle.id
-                    ? 'bg-accent-500 text-white shadow-lg shadow-accent-500/20'
-                    : 'bg-dark-800 text-dark-400 hover:bg-dark-700'
+                    ? 'border border-cyan-400/25 bg-cyan-500/10 text-cyan-200'
+                    : 'border border-white/[0.07] bg-white/[0.025] text-slate-500 hover:bg-white/[0.05]'
                 }`}
               >
                 {cycleMonth.toLocaleString('en-IN', { month: 'short', year: '2-digit' })} Cycle
@@ -104,39 +187,43 @@ export default function Reports() {
       </div>
 
       {/* Content */}
-      <div className="space-y-4 px-4 py-4">
+      <div className="space-y-3">
+        <div className="grid gap-3 xl:grid-cols-[0.8fr_1.2fr]">
         {/* Summary Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-dark-800 to-dark-900 rounded-2xl p-4 border border-dark-700 shadow-xl"
+          className="surface-card relative overflow-hidden p-4"
         >
+          <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl" />
           <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="text-dark-400 text-xs font-semibold uppercase tracking-wider">
+              <p className="eyebrow">
                 {selectedCycleDetails.name}
               </p>
-              <p className="text-[10px] text-dark-500 mt-0.5">
+              <p className="mt-1 text-xs text-slate-500">
                 {selectedCycleDetails.startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} to {selectedCycleDetails.endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
               </p>
             </div>
-            <span className="text-[10px] text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded-md border border-accent-500/20 font-bold">
+            <span className="rounded-lg border border-cyan-400/15 bg-cyan-500/[0.07] px-2.5 py-1 text-[10px] font-bold text-cyan-300">
               {cycleDays} Days
             </span>
           </div>
           
-          <h2 className="text-3xl font-extrabold text-white mb-4">
+          <h2 className="mb-3 mt-2 text-2xl font-bold tracking-tight text-white">
             {formatCurrency(totalCycle)}
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-dark-950/60 rounded-xl p-3 border border-dark-800/40">
-              <p className="text-[10px] text-dark-500 mb-1">Transactions</p>
+            <div className="soft-panel p-3">
+              <Receipt size={15} className="mb-2 text-violet-300" />
+              <p className="text-[10px] text-slate-500 mb-1">Transactions</p>
               <p className="text-base font-bold text-white">
                 {cycleExpenses.length}
               </p>
             </div>
-            <div className="bg-dark-950/60 rounded-xl p-3 border border-dark-800/40">
-              <p className="text-[10px] text-dark-500 mb-1">Avg Per Day</p>
+            <div className="soft-panel p-3">
+              <Wallet size={15} className="mb-2 text-emerald-300" />
+              <p className="text-[10px] text-slate-500 mb-1">Avg Per Day</p>
               <p className="text-base font-bold text-white">
                 {formatCurrency(totalCycle / cycleDays)}
               </p>
@@ -144,22 +231,69 @@ export default function Reports() {
           </div>
         </motion.div>
 
+        {/* Statement Export */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="surface-card p-4"
+        >
+          <div className="mb-4">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><CalendarRange size={18} /></div>
+            <h2 className="section-title">Export statement</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Download salary, total spending, and transaction details for any date range.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="field-label">
+              From
+              <input
+                type="date"
+                value={statementStartDate}
+                onChange={(event) => setStatementStartDate(event.target.value)}
+                className="field-control mt-1.5"
+              />
+            </label>
+            <label className="field-label">
+              To
+              <input
+                type="date"
+                value={statementEndDate}
+                onChange={(event) => setStatementEndDate(event.target.value)}
+                className="field-control mt-1.5"
+              />
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={exportStatement}
+            className="primary-button mt-4 w-full"
+          >
+            <Download size={18} />
+            Download Statement
+          </button>
+        </motion.div>
+        </div>
+
         {/* Charts */}
         {categoryData.length > 0 ? (
-          <>
+          <div className="grid gap-3 xl:grid-cols-2">
             {/* Category Distribution */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1 }}
-              className="bg-gradient-to-br from-dark-800 to-dark-900 rounded-2xl p-4 border border-dark-700 shadow-xl"
+              className="surface-card p-4"
             >
-              <h3 className="text-sm font-semibold text-white mb-4">
+              <h3 className="section-title mb-4">
                 By Category
               </h3>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={categoryData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
                   <XAxis
                     dataKey="name"
                     stroke="#6b7280"
@@ -183,12 +317,13 @@ export default function Reports() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="bg-gradient-to-br from-dark-800 to-dark-900 rounded-2xl p-4 border border-dark-700 shadow-xl"
+              className="surface-card p-4"
             >
-              <h3 className="text-sm font-semibold text-white mb-4">
+              <h3 className="section-title mb-4">
                 Distribution
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <div className="grid items-center gap-2 sm:grid-cols-[1fr_150px]">
+              <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie
                     data={categoryData}
@@ -210,8 +345,28 @@ export default function Reports() {
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
+                  <text x="50%" y="47%" textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize="15" fontWeight="700">
+                    {formatCurrency(totalCycle)}
+                  </text>
+                  <text x="50%" y="56%" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="9">
+                    Total spent
+                  </text>
                 </PieChart>
               </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-1">
+                {categoryData.slice(0, 7).map((cat, index) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategoryId(cat.id)}
+                    className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-slate-400 hover:bg-white/[0.04]"
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="truncate">{cat.icon} {cat.name}</span>
+                  </button>
+                ))}
+              </div>
+              </div>
             </motion.div>
 
             {/* Category Details */}
@@ -219,14 +374,21 @@ export default function Reports() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="space-y-2"
+              className="surface-card space-y-1 p-4 xl:col-span-2"
             >
+              <div className="mb-4">
+                <p className="eyebrow">Breakdown</p>
+                <h3 className="section-title mt-1">Category spending</h3>
+              </div>
+              <div className="hidden grid-cols-[1fr_120px_140px_100px] gap-3 border-b border-white/[0.06] px-3 pb-2 text-[9px] font-bold uppercase tracking-wider text-slate-600 sm:grid">
+                <span>Category</span><span>Transactions</span><span>Total spent</span><span>% of total</span>
+              </div>
               {categoryData.map((cat, index) => (
                 <button
                   key={cat.name}
                   type="button"
                   onClick={() => setSelectedCategoryId(cat.id)}
-                  className="w-full bg-dark-800 rounded-xl p-3 border border-dark-700 flex items-center justify-between text-left shadow-md hover:border-accent-500/60 active:scale-[0.99]"
+                  className="grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-white/[0.05] bg-white/[0.018] p-3 text-left transition hover:border-blue-400/15 hover:bg-white/[0.04] active:scale-[0.99] sm:grid-cols-[1fr_120px_140px_100px]"
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -242,18 +404,20 @@ export default function Reports() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <p className="hidden text-xs text-slate-500 sm:block">{cat.count}</p>
+                  <div className="text-right sm:text-left">
                     <p className="text-sm font-semibold text-white">
                       {formatCurrency(cat.value)}
                     </p>
-                    <p className="text-xs text-dark-500">
+                    <p className="text-xs text-dark-500 sm:hidden">
                       {((cat.value / totalCycle) * 100).toFixed(1)}%
                     </p>
                   </div>
+                  <p className="hidden text-xs font-semibold text-slate-400 sm:block">{((cat.value / totalCycle) * 100).toFixed(1)}%</p>
                 </button>
               ))}
             </motion.div>
-          </>
+          </div>
         ) : (
           <div className="flex items-center justify-center py-16 text-center">
             <p className="text-dark-500 text-sm">
@@ -268,7 +432,7 @@ export default function Reports() {
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-h-[85vh] w-full overflow-hidden rounded-t-2xl border border-dark-700 bg-dark-900 shadow-2xl sm:mx-auto sm:max-w-md sm:rounded-2xl"
+            className="max-h-[85vh] w-full overflow-hidden rounded-t-xl border border-[#2a3b52] bg-[#0b1727] shadow-2xl sm:mx-auto sm:max-w-md sm:rounded-xl"
           >
             <div className="flex items-center justify-between border-b border-dark-800 px-4 py-4">
               <div className="min-w-0">
@@ -309,8 +473,11 @@ export default function Reports() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">
-                          {expense.note || selectedCategory.name}
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-dark-500">
+                          Note
+                        </p>
+                        <p className="mt-0.5 break-words text-sm font-medium text-white">
+                          {expense.note || 'No note added'}
                         </p>
                         <p className="mt-1 text-xs text-dark-500">
                           {formatDate(expense.date)} at {formatTime(expense.date)}
@@ -327,6 +494,7 @@ export default function Reports() {
           </motion.div>
         </div>
       )}
+      </div>
     </motion.div>
   );
 }

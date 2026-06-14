@@ -9,7 +9,7 @@ export default function ExpenseTrendChart() {
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload?.length) {
       return (
-        <div className=" rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 ">
+        <div className="rounded-xl border border-white/10 bg-[#07111f]/95 p-3 shadow-2xl">
           <p className="text-dark-200">{payload[0].payload.month}</p>
           <p className="text-accent-400 font-semibold">
             {formatCurrency(payload[0].value)}
@@ -25,29 +25,39 @@ export default function ExpenseTrendChart() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.25 }}
-      className="px-4 bg-gradient-to-br from-dark-800 to-dark-900 rounded-2xl p-4 border border-dark-700"
+      className="surface-card p-4"
     >
-      <h3 className="text-sm font-semibold text-white mb-4">Salary Cycle Trend</h3>
-      <ResponsiveContainer width="100%" height={200}>
+      <div className="mb-4 flex items-end justify-between">
+        <div>
+          <p className="eyebrow">Last 6 cycles</p>
+          <h3 className="section-title mt-1">Spending trend</h3>
+        </div>
+        <span className="rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold text-slate-500">Live</span>
+      </div>
+      <ResponsiveContainer width="100%" height={215}>
         <LineChart data={trends}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
           <XAxis
             dataKey="month"
-            stroke="#6b7280"
-            style={{ fontSize: '12px' }}
+            stroke="#64748b"
+            style={{ fontSize: '10px' }}
+            axisLine={false}
+            tickLine={false}
           />
           <YAxis
-            stroke="#6b7280"
-            style={{ fontSize: '12px' }}
+            stroke="#64748b"
+            style={{ fontSize: '10px' }}
             width={40}
+            axisLine={false}
+            tickLine={false}
           />
           <Tooltip content={<CustomTooltip />} />
           <Line
             type="monotone"
             dataKey="total"
-            stroke="#0ea5e9"
-            strokeWidth={2}
-            dot={{ fill: '#0ea5e9', r: 4 }}
+            stroke="#38bdf8"
+            strokeWidth={3}
+            dot={{ fill: '#07111f', stroke: '#38bdf8', strokeWidth: 2, r: 4 }}
             activeDot={{ r: 6 }}
           />
         </LineChart>

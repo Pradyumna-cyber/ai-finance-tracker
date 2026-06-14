@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { X, Check } from 'lucide-react';
+import { ArrowLeft, Check, Info, Receipt } from 'lucide-react';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { formatDateShort, generateId } from '@/utils/formatters';
@@ -91,24 +91,27 @@ export default function AddExpense() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="fixed inset-0 w-full max-w-full overflow-x-hidden bg-dark-950 z-50 flex flex-col"
+      className="app-page"
     >
-      {/* Header */}
-      <div className="flex w-full min-w-0 items-center justify-between px-4 pt-6 pb-4 border-b border-dark-800">
-        <h1 className="text-2xl font-bold text-white">Add Expense</h1>
+      <div className="page-shell max-w-xl">
+      <div className="mb-6 flex w-full min-w-0 items-center gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 hover:bg-dark-800 rounded-lg transition-colors"
+          className="secondary-button h-10 w-10 p-0"
+          aria-label="Go back"
         >
-          <X size={24} className="text-dark-400" />
+          <ArrowLeft size={18} />
         </button>
+        <div>
+          <p className="eyebrow">New transaction</p>
+          <h1 className="page-title mt-1">Add expense</h1>
+        </div>
       </div>
 
-      {/* Form */}
-      <form id="expense-form" onSubmit={handleSubmit} className="flex-1 w-full min-w-0 overflow-y-auto overflow-x-hidden px-4 py-6 space-y-6">
+      <form id="expense-form" onSubmit={handleSubmit} className="surface-card space-y-6 p-5 sm:p-7">
         {/* Amount Input */}
         <div>
-          <label className="text-sm font-medium text-dark-300 block mb-3">
+          <label className="field-label">
             Amount
           </label>
           <AmountInput value={amount} onChange={setAmount} />
@@ -116,7 +119,7 @@ export default function AddExpense() {
 
         {/* Category Selector */}
         <div>
-          <label className="text-sm font-medium text-dark-300 block mb-3">
+          <label className="field-label">
             Category
           </label>
           <CategorySelector
@@ -126,45 +129,50 @@ export default function AddExpense() {
         </div>
 
         {/* Date Input */}
-        <div>
-          <label className="text-sm font-medium text-dark-300 block mb-3">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+          <label className="field-label">
             Date
           </label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:border-accent-500 transition-colors"
+            className="field-control"
             max={new Date().toISOString().split('T')[0]}
           />
-          <p className="mt-2 text-xs text-dark-500">
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+            <Info size={12} className="text-cyan-400" />
             Salary cycle: {formatDateShort(selectedCycle.startDate)} to {formatDateShort(selectedCycle.endDate)}
           </p>
-        </div>
+          </div>
 
         {/* Note Input */}
-        <div>
-          <label className="text-sm font-medium text-dark-300 block mb-3">
+          <div>
+          <label className="field-label">
             Note (Optional)
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Add a note..."
-            className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:border-accent-500 transition-colors resize-none"
+            placeholder="What was this spend for?"
+            className="field-control resize-none"
             rows={3}
           />
+          </div>
         </div>
-      </form>
 
-      {/* Submit Button */}
-      <div className="sticky bottom-0 px-4 py-4 bg-dark-900 border-t border-dark-800">
+        <div className="soft-panel flex items-start gap-3 p-3 text-xs leading-5 text-slate-500">
+          <Receipt size={16} className="mt-0.5 shrink-0 text-violet-300" />
+          Your note appears in reports and exported statements, so future-you knows exactly what the spend was for.
+        </div>
+
         <motion.button
           whileTap={{ scale: 0.95 }}
           type="submit"
           form="expense-form"
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 disabled:from-dark-600 disabled:to-dark-700 text-white font-semibold rounded-xl transition-all"
+          className="primary-button w-full"
         >
           {isLoading ? (
             <motion.div
@@ -179,6 +187,7 @@ export default function AddExpense() {
             </>
           )}
         </motion.button>
+      </form>
       </div>
     </motion.div>
   );

@@ -8,6 +8,7 @@ import { useBudgetStore } from '@/store/budgetStore';
 import { generateId } from '@/utils/formatters';
 import CategorySelector from '@/components/forms/CategorySelector';
 import AmountInput from '@/components/forms/AmountInput';
+import BrandMark from '@/components/layout/BrandMark';
 
 export default function Onboarding() {
   const { completeOnboarding } = useUserStore();
@@ -105,25 +106,29 @@ export default function Onboarding() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800 z-50 overflow-y-auto"
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#030814]"
     >
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,0.18),transparent_34%),radial-gradient(circle_at_90%_80%,rgba(124,58,237,0.12),transparent_28%)]" />
+      <div className="relative min-h-screen px-4 py-8">
+        <div className="mx-auto mb-10 max-w-5xl"><BrandMark /></div>
+        <div className="mx-auto flex max-w-5xl items-center justify-center">
         {/* Step 1: Profile Information */}
         {step === 1 && (
           <motion.div
             variants={container}
             initial="hidden"
             animate="show"
-            className="w-full max-w-md"
+            className="w-full max-w-xl"
           >
             {/* Header */}
             <motion.div variants={item} className="mb-8 text-center">
-              <div className="text-6xl mb-4 inline-block">💰</div>
-              <h1 className="text-4xl font-bold text-white mb-2">
-                Welcome to Expense Copilot
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[28px] border border-cyan-400/20 bg-gradient-to-br from-blue-500/20 to-violet-500/20 text-4xl shadow-[0_0_50px_rgba(14,165,233,0.18)]">✨</div>
+              <p className="eyebrow mb-2">Your money, finally clear</p>
+              <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                Meet your financial copilot
               </h1>
-              <p className="text-dark-400">
-                Let's get you started tracking expenses smarter
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+                Understand every spend, protect your salary, and make calmer money decisions.
               </p>
             </motion.div>
 
@@ -131,7 +136,7 @@ export default function Onboarding() {
             <motion.form
               variants={item}
               onSubmit={handleNameSubmit}
-              className="space-y-4 mb-6"
+              className="surface-card mb-6 space-y-4 p-5 sm:p-7"
             >
               {/* Name Input */}
               <div>
@@ -239,7 +244,7 @@ export default function Onboarding() {
                 whileTap={{ scale: 0.95 }}
                 type="submit"
                 disabled={!isStep1Valid}
-                className="w-full flex items-center justify-center gap-2 py-3 mt-6 bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 disabled:from-dark-600 disabled:to-dark-700 text-white font-semibold rounded-xl transition-all"
+                className="primary-button mt-6 w-full"
               >
                 Get Started
                 <ArrowRight size={20} />
@@ -249,7 +254,7 @@ export default function Onboarding() {
             {/* Info Section */}
             <motion.div
               variants={item}
-              className="bg-dark-800/50 border border-dark-700 rounded-xl p-4 text-center"
+              className="soft-panel p-4 text-center"
             >
               <p className="text-xs text-dark-500">
                 ✨ Next, add your first expense to start tracking
@@ -264,7 +269,7 @@ export default function Onboarding() {
             variants={container}
             initial="hidden"
             animate="show"
-            className="w-full max-w-md"
+            className="w-full max-w-xl"
           >
             {/* Progress */}
             <motion.div variants={item} className="mb-6">
@@ -296,7 +301,7 @@ export default function Onboarding() {
             <motion.form
               variants={item}
               onSubmit={handleExpenseSubmit}
-              className="space-y-6 mb-6"
+              className="surface-card mb-6 space-y-6 p-5 sm:p-7"
             >
               {/* Amount Input */}
               <div>
@@ -323,7 +328,7 @@ export default function Onboarding() {
                   whileTap={{ scale: 0.95 }}
                   type="submit"
                   disabled={!amount || !selectedCategory}
-                  className="w-full py-3 bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 disabled:from-dark-600 disabled:to-dark-700 text-white font-semibold rounded-xl transition-all"
+                  className="primary-button w-full"
                 >
                   Save Expense & Continue
                 </motion.button>
@@ -332,7 +337,7 @@ export default function Onboarding() {
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={handleSkipExpense}
-                  className="w-full py-3 bg-dark-800 hover:bg-dark-700 text-dark-300 font-semibold rounded-xl transition-all border border-dark-700"
+                  className="secondary-button w-full"
                 >
                   Skip for Now
                 </motion.button>
@@ -342,7 +347,7 @@ export default function Onboarding() {
             {/* Tip */}
             <motion.div
               variants={item}
-              className="bg-gradient-to-br from-accent-500/10 to-accent-600/5 border border-accent-500/30 rounded-xl p-4 text-center"
+              className="soft-panel border-cyan-400/15 p-4 text-center"
             >
               <p className="text-xs text-accent-300">
                 💡 You can add more expenses anytime from the "Add" tab
@@ -350,6 +355,7 @@ export default function Onboarding() {
             </motion.div>
           </motion.div>
         )}
+        </div>
       </div>
     </motion.div>
   );

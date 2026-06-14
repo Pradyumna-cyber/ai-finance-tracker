@@ -8,6 +8,7 @@ import AddExpense from '@/pages/AddExpense';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import Categories from '@/pages/Categories';
+import AskAIPage from '@/pages/AskAIPage';
 import Onboarding from '@/pages/Onboarding';
 import SalaryReviewModal from '@/components/dashboard/SalaryReviewModal';
 
@@ -77,6 +78,12 @@ function App() {
               <MainLayout>
                 <Categories />
               </MainLayout>
+            }
+          />
+          <Route
+            path="/ask-ai"
+            element={
+              <AskAIPage />
             }
           />
         </Routes>

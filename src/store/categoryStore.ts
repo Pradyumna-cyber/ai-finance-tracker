@@ -2,6 +2,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Category, CategoryId } from '@/types';
+import {
+  getUniqueCategoryColor,
+  refineCategoryPresentations,
+  SMART_CATEGORY_COLORS,
+  suggestCategoryIcon,
+} from '@/utils/categoryPresentation';
 
 export const DEFAULT_CATEGORIES: Category[] = [
   {
@@ -124,22 +130,7 @@ export const CATEGORY_ICONS = [
 ];
 
 export const CATEGORY_COLORS = [
-  'from-orange-500 to-red-500',
-  'from-blue-500 to-cyan-500',
-  'from-purple-500 to-pink-500',
-  'from-green-500 to-emerald-500',
-  'from-pink-500 to-rose-500',
-  'from-indigo-500 to-purple-500',
-  'from-yellow-500 to-orange-500',
-  'from-sky-500 to-blue-500',
-  'from-cyan-500 to-blue-500',
-  'from-red-500 to-pink-500',
-  'from-lime-500 to-green-500',
-  'from-amber-500 to-yellow-500',
-  'from-violet-500 to-fuchsia-500',
-  'from-blue-600 to-indigo-600',
-  'from-emerald-500 to-teal-500',
-  'from-rose-500 to-red-500',
+  ...SMART_CATEGORY_COLORS,
 ];
 
 interface CategoryStore {
@@ -171,7 +162,11 @@ export const useCategoryStore =
           set((state) => ({
             categories: [
               ...state.categories,
-              category,
+              {
+                ...category,
+                icon: category.icon || suggestCategoryIcon(category.name),
+                color: category.color || getUniqueCategoryColor(category.name, state.categories),
+              },
             ],
           }));
         },
@@ -181,12 +176,20 @@ export const useCategoryStore =
           updates: Partial<Category>
         ) => {
           set((state) => ({
-            categories: state.categories.map(
-              (cat) =>
-                cat.id === id
-                  ? { ...cat, ...updates }
-                  : cat
-            ),
+            categories: state.categories.map((cat) => {
+              if (cat.id !== id) return cat;
+
+              const newName = updates.name ?? cat.name;
+              const newIcon = updates.icon ?? (updates.name ? suggestCategoryIcon(String(newName)) : cat.icon);
+              const newColor = updates.color ?? (updates.name ? getUniqueCategoryColor(String(newName), state.categories, id) : cat.color);
+
+              return {
+                ...cat,
+                ...updates,
+                icon: newIcon,
+                color: newColor,
+              };
+            }),
           }));
         },
 
@@ -210,17 +213,43 @@ export const useCategoryStore =
         initializeDefaultCategories: () => {
           const { categories } = get();
 
+          // If no categories exist, populate defaults with refined presentations
           if (categories.length === 0) {
             set({
-              categories: DEFAULT_CATEGORIES,
+              categories: refineCategoryPresentations(DEFAULT_CATEGORIES),
             });
+            return;
+          }
+
+          // Check if any category is missing icon/color or if colors are duplicated
+          const colorCounts: Record<string, number> = {};
+          let hasMissing = false;
+
+          categories.forEach((c) => {
+            if (!c.icon || c.icon === '✨' || !c.color) hasMissing = true;
+            colorCounts[c.color] = (colorCounts[c.color] || 0) + 1;
+          });
+
+          const hasDuplicates = Object.values(colorCounts).some((count) => count > 1);
+
+          if (hasMissing || hasDuplicates) {
+            const refined = refineCategoryPresentations(categories);
+            set({ categories: refined });
           }
         },
       }),
       {
         name: 'category-store',
-        version: 2,
+        version: 3,
+        migrate: (persistedState: any, version: number) => {
+          if (version < 3 && Array.isArray(persistedState?.categories)) {
+            return {
+              ...persistedState,
+              categories: refineCategoryPresentations(persistedState.categories),
+            };
+          }
+          return persistedState;
+        },
       }
     )
   );
-
