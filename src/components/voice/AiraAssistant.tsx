@@ -383,7 +383,7 @@ export default function AiraAssistant() {
   const isOpen = state.mode !== 'idle' || Boolean(state.error);
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-50 flex flex-col items-end gap-3 lg:bottom-6 lg:right-6 lg:top-auto">
+    <div className="pointer-events-none fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3 lg:bottom-6 lg:right-6">
       <AnimatePresence>
         {showWelcome && supportsVoice ? (
           <motion.div
