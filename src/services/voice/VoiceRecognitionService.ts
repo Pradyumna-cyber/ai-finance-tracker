@@ -45,6 +45,7 @@ export class VoiceRecognitionService {
   private isListening = false;
   private emittedFinalTranscript = false;
   private lastTranscript = '';
+  private ignoreNextAbortError = false;
   private callbacks: VoiceRecognitionCallbacks;
   private options: Required<VoiceRecognitionOptions>;
 
@@ -91,6 +92,7 @@ export class VoiceRecognitionService {
 
   cancel() {
     if (!this.recognition) return;
+    this.ignoreNextAbortError = true;
     this.recognition.abort();
     this.isListening = false;
   }
@@ -117,6 +119,7 @@ export class VoiceRecognitionService {
 
     this.recognition.onstart = () => {
       this.isListening = true;
+      this.ignoreNextAbortError = false;
       this.emittedFinalTranscript = false;
       this.lastTranscript = '';
       this.callbacks.onStart?.();
@@ -133,6 +136,12 @@ export class VoiceRecognitionService {
 
     this.recognition.onerror = (event) => {
       this.isListening = false;
+      if (event.error === 'aborted' && this.ignoreNextAbortError) {
+        this.ignoreNextAbortError = false;
+        return;
+      }
+
+      this.ignoreNextAbortError = false;
       this.callbacks.onError?.(event.error || 'Voice recognition failed. Please try again.');
     };
 

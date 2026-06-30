@@ -335,6 +335,8 @@ export default function AiraAssistant() {
         }
       },
       onError: (message) => {
+        if (message === 'aborted' || message === 'AbortError') return;
+
         clearSilenceTimer();
         setState((current) => ({ ...current, mode: 'idle', error: message, message }));
       },
