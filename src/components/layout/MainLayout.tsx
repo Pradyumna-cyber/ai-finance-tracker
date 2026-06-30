@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import BottomNavigation from './BottomNavigation';
 import BrandMark from './BrandMark';
 import ReminderToast from '@/components/ReminderToast';
+import AiraAssistant from '@/components/voice/AiraAssistant';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -58,6 +59,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {children}
       </main>
 
+      <AiraAssistant />
       <BottomNavigation />
     </div>
   );
