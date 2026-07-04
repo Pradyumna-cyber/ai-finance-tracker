@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarRange, Download, Receipt, Wallet, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { useExpenseStore } from '@/store/expenseStore';
+import { getTransactionSignedAmount, isDebitTransaction, useExpenseStore } from '@/store/expenseStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useBudgetStore } from '@/store/budgetStore';
 import { formatCurrency, formatDate, formatTime } from '@/utils/formatters';
@@ -59,8 +59,16 @@ export default function Reports() {
     formatDateInput(selectedCycleDetails.endDate)
   );
 
-  const cycleExpenses = getExpensesBySalaryCycle(selectedCycleId);
+  const cycleTransactions = getExpensesBySalaryCycle(selectedCycleId);
+  const cycleExpenses = cycleTransactions.filter(isDebitTransaction);
   const totalCycle = cycleExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const cycleCreditTotal = cycleTransactions
+    .filter((transaction) => !isDebitTransaction(transaction))
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const netCycle = cycleTransactions.reduce(
+    (sum, transaction) => sum + getTransactionSignedAmount(transaction),
+    0
+  );
 
   const cycleDays = Math.max(1, getCalendarDayDiff(selectedCycleDetails.startDate, selectedCycleDetails.nextSalaryDate));
 
@@ -101,26 +109,38 @@ export default function Reports() {
     }
 
     const categoryMap = new Map(categories.map((category) => [category.id, category]));
-    const statementExpenses = expenses
+    const statementTransactions = expenses
       .filter((expense) => {
         const expenseDate = new Date(expense.date);
         return expenseDate >= startDate && expenseDate <= endDate;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const statementTotal = statementExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const statementTotalSpent = statementTransactions
+      .filter(isDebitTransaction)
+      .reduce((sum, expense) => sum + expense.amount, 0);
+    const statementTotalCredits = statementTransactions
+      .filter((expense) => !isDebitTransaction(expense))
+      .reduce((sum, expense) => sum + expense.amount, 0);
+    const statementNetCashFlow = statementTransactions.reduce(
+      (sum, expense) => sum + getTransactionSignedAmount(expense),
+      0
+    );
 
     const rows = [
-      ['Expense Statement'],
+      ['Transaction Statement'],
       ['Statement Period', `${formatDate(startDate)} to ${formatDate(endDate)}`],
       ['Monthly Salary', monthlySalary],
-      ['Statement Total Spent', statementTotal],
+      ['Statement Total Spent', statementTotalSpent],
+      ['Statement Total Credits', statementTotalCredits],
+      ['Net Cash Flow', statementNetCashFlow],
       [],
-      ['Date', 'Category', 'Note', 'Price'],
-      ...statementExpenses.map((expense) => [
+      ['Date', 'Type', 'Category', 'Note', 'Amount'],
+      ...statementTransactions.map((expense) => [
         formatDate(expense.date),
+        isDebitTransaction(expense) ? 'Debit' : 'Credit',
         categoryMap.get(expense.categoryId)?.name || 'Unknown',
-        expense.note || '',
-        expense.amount,
+        expense.note || expense.description || '',
+        getTransactionSignedAmount(expense),
       ]),
     ];
 
@@ -131,7 +151,7 @@ export default function Reports() {
     const downloadUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `expense-statement-${statementStartDate}-to-${statementEndDate}.csv`;
+    link.download = `transaction-statement-${statementStartDate}-to-${statementEndDate}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -210,15 +230,18 @@ export default function Reports() {
             </span>
           </div>
           
-          <h2 className="mb-3 mt-2 text-2xl font-bold tracking-tight text-white">
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
             {formatCurrency(totalCycle)}
           </h2>
+          <p className="mb-3 mt-1 text-xs text-slate-500">
+            {formatCurrency(cycleCreditTotal)} credited · {formatCurrency(netCycle)} net cash flow
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <div className="soft-panel p-3">
               <Receipt size={15} className="mb-2 text-violet-300" />
               <p className="text-[10px] text-slate-500 mb-1">Transactions</p>
               <p className="text-base font-bold text-white">
-                {cycleExpenses.length}
+                {cycleTransactions.length}
               </p>
             </div>
             <div className="soft-panel p-3">
@@ -242,7 +265,7 @@ export default function Reports() {
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><CalendarRange size={18} /></div>
             <h2 className="section-title">Export statement</h2>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Download salary, total spending, and transaction details for any date range.
+              Download salary, spending, credits, and transaction details for any date range.
             </p>
           </div>
 
@@ -477,7 +500,7 @@ export default function Reports() {
                           Note
                         </p>
                         <p className="mt-0.5 break-words text-sm font-medium text-white">
-                          {expense.note || 'No note added'}
+                          {expense.note || expense.description || 'No note added'}
                         </p>
                         <p className="mt-1 text-xs text-dark-500">
                           {formatDate(expense.date)} at {formatTime(expense.date)}

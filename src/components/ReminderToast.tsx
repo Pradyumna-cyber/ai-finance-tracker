@@ -10,14 +10,30 @@ const getCurrentTimeString = () => {
   return now.toTimeString().slice(0, 5);
 };
 
+const getMinutesFromTime = (timeString: string) => {
+  const [hour, minute] = timeString.split(':').map(Number);
+  return hour * 60 + minute;
+};
+
 const getNextReminder = (currentTime: string, remindersShown: number) => {
   if (remindersShown >= REMINDER_TIMES.length) return null;
-  for (let i = remindersShown; i < REMINDER_TIMES.length; i += 1) {
-    if (REMINDER_TIMES[i] > currentTime) {
-      return REMINDER_TIMES[i];
-    }
+
+  const currentMinutes = getMinutesFromTime(currentTime);
+  const nextReminderTime = REMINDER_TIMES[remindersShown];
+  const nextReminderMinutes = getMinutesFromTime(nextReminderTime);
+
+  if (currentMinutes >= nextReminderMinutes) {
+    return {
+      time: nextReminderTime,
+      isDue: true,
+    };
   }
-  return null;
+
+  return {
+    time: nextReminderTime,
+    isDue: false,
+    waitMinutes: nextReminderMinutes - currentMinutes,
+  };
 };
 
 const getMinutesUntil = (timeString: string) => {
@@ -43,12 +59,7 @@ export default function ReminderToast() {
   useEffect(() => {
     if (location.pathname === '/add') return undefined;
 
-    const currentTime = getCurrentTimeString();
-    const nextReminder = getNextReminder(currentTime, remindersShownToday);
-    if (!nextReminder) return undefined;
-
-    const minutesUntil = getMinutesUntil(nextReminder);
-    const timer = window.setTimeout(() => {
+    const triggerReminder = () => {
       const notificationText = `Reminder ${remindersShownToday + 1} of 4: Add your expense now.`;
       setMessage(notificationText);
       setVisible(true);
@@ -64,7 +75,18 @@ export default function ReminderToast() {
           navigate('/add');
         };
       }
-    }, minutesUntil * 60 * 1000);
+    };
+
+    const currentTime = getCurrentTimeString();
+    const nextReminder = getNextReminder(currentTime, remindersShownToday);
+    if (!nextReminder) return undefined;
+
+    if (nextReminder.isDue) {
+      triggerReminder();
+      return undefined;
+    }
+
+    const timer = window.setTimeout(triggerReminder, getMinutesUntil(nextReminder.time) * 60 * 1000);
 
     return () => window.clearTimeout(timer);
   }, [location.pathname, remindersShownToday, ensureToday, recordReminderShown, dailyReminderDate, navigate]);

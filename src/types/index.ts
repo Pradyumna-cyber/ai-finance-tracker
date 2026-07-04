@@ -1,5 +1,6 @@
 export type CategoryId = string;
 export type ExpenseId = string;
+export type TransactionType = 'debit' | 'credit';
 
 export interface Category {
   id: string;
@@ -11,7 +12,9 @@ export interface Category {
 export interface Expense {
   id: ExpenseId;
   amount: number;
+  type: TransactionType;
   categoryId: CategoryId;
+  description?: string;
   note: string;
   date: Date;
   createdAt: Date;

@@ -17,7 +17,7 @@ export default function BottomNavigation() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 h-[76px] border-t border-white/[0.08] bg-[#07111f]/95 px-3 backdrop-blur-2xl lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 h-[calc(76px+env(safe-area-inset-bottom))] border-t border-white/[0.08] bg-[#07111f]/95 px-3 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl lg:hidden">
       <div className="mx-auto flex h-full max-w-lg items-center justify-around">
         {navItems.map(({ path, icon: Icon, label, id }) => (
           <button

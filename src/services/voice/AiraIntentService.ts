@@ -1,5 +1,6 @@
 import type { Category, Expense } from '@/types';
 import type { BudgetDeduction } from '@/store/budgetStore';
+import { getTransactionSignedAmount, isCreditTransaction, isDebitTransaction } from '@/store/expenseStore';
 import { formatCurrency, formatDateShort } from '@/utils/formatters';
 import { getSalaryCycleForDate } from '@/utils/salaryCycle';
 import { voiceParser, type PendingVoiceExpense } from '@/services/voice/VoiceParser';
@@ -165,6 +166,9 @@ const inRange = (expense: Expense, range: DateRange) => {
 };
 
 const getExpensesInRange = (context: AiraFinanceContext, range: DateRange) =>
+  context.expenses.filter((expense) => inRange(expense, range) && isDebitTransaction(expense));
+
+const getTransactionsInRange = (context: AiraFinanceContext, range: DateRange) =>
   context.expenses.filter((expense) => inRange(expense, range));
 
 const getActiveDeductionsTotal = (deductions: BudgetDeduction[]) =>
@@ -198,18 +202,20 @@ const getCurrentCycleExpenses = (context: AiraFinanceContext) => {
   const cycle = getSalaryCycleForDate(new Date(), context.salaryCreditType, context.fixedCreditDate);
   return {
     cycle,
-    expenses: context.expenses.filter((expense) => expense.salaryCycleId === cycle.id),
+    expenses: context.expenses.filter((expense) => expense.salaryCycleId === cycle.id && isDebitTransaction(expense)),
+    transactions: context.expenses.filter((expense) => expense.salaryCycleId === cycle.id),
   };
 };
 
 const summarizeSpending = (context: AiraFinanceContext) => {
-  const { cycle, expenses } = getCurrentCycleExpenses(context);
+  const { cycle, expenses, transactions } = getCurrentCycleExpenses(context);
   const spent = expenses.reduce((total, expense) => total + expense.amount, 0);
+  const netCashFlow = transactions.reduce((total, expense) => total + getTransactionSignedAmount(expense), 0);
   const activeDeductions = context.deductions
     .filter((deduction) => deduction.isActive)
     .reduce((total, deduction) => total + deduction.amount, 0);
   const disposable = Math.max(0, context.monthlySalary - activeDeductions);
-  const remaining = Math.max(0, disposable - spent);
+  const remaining = Math.max(0, disposable + netCashFlow);
 
   if (!context.monthlySalary) {
     return `You have spent ${formatCurrency(spent)} in this salary cycle, from ${formatDateShort(cycle.startDate)} to ${formatDateShort(cycle.endDate)}. Add your salary in settings for budget-aware answers.`;
@@ -251,14 +257,17 @@ const summarizeExpenses = (
 
 const summarizeIncome = (context: AiraFinanceContext, range: DateRange) => {
   const netSalary = getNetSalary(context);
-  if (!netSalary) return 'I do not see any income configured yet.';
-  return `Your income for ${range.label} is ${formatCurrency(netSalary)}.`;
+  const credits = getTransactionsInRange(context, range)
+    .filter(isCreditTransaction)
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  if (!netSalary && !credits) return 'I do not see any income configured yet.';
+  return `Your configured income is ${formatCurrency(netSalary)} and recorded credits are ${formatCurrency(credits)} for ${range.label}.`;
 };
 
 const summarizeBalance = (context: AiraFinanceContext) => {
-  const { expenses } = getCurrentCycleExpenses(context);
-  const spent = expenses.reduce((total, expense) => total + expense.amount, 0);
-  const remaining = Math.max(0, getNetSalary(context) - spent);
+  const { transactions } = getCurrentCycleExpenses(context);
+  const netCashFlow = transactions.reduce((total, expense) => total + getTransactionSignedAmount(expense), 0);
+  const remaining = Math.max(0, getNetSalary(context) + netCashFlow);
 
   return `You have about ${formatCurrency(remaining)} left in this salary cycle.`;
 };
@@ -333,8 +342,9 @@ const summarizeRecentExpense = (context: AiraFinanceContext) => {
   if (!recent) return 'You have not added any expenses yet.';
 
   const category = categoryMap.get(recent.categoryId);
-  const note = recent.note ? ` for ${recent.note}` : '';
-  return `Your latest expense is ${formatCurrency(recent.amount)} under ${category?.name || 'Unknown'}${note}.`;
+  const note = recent.note || recent.description ? ` for ${recent.note || recent.description}` : '';
+  const kind = isCreditTransaction(recent) ? 'credit' : 'expense';
+  return `Your latest ${kind} is ${formatCurrency(recent.amount)} under ${category?.name || 'Unknown'}${note}.`;
 };
 
 const summarizeTrend = (context: AiraFinanceContext, range: DateRange) => {

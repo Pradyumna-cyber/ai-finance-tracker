@@ -17,14 +17,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isAddPage = location.pathname === '/add';
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
-    { path: '/add', icon: Plus, label: 'Add Expense' },
+    { path: '/add', icon: Plus, label: 'Add Transaction' },
     { path: '/reports', icon: BarChart3, label: 'Reports' },
     { path: '/categories', icon: Shapes, label: 'Categories' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-transparent">
+    <div className="flex h-full min-h-0 w-full overflow-hidden bg-transparent">
       <aside className="hidden w-[84px] shrink-0 flex-col border-r border-[#223149] bg-[#081321]/95 px-2 py-4 backdrop-blur-2xl lg:flex">
         <div className="flex justify-center"><BrandMark compact /></div>
         <nav className="mt-7 space-y-2">
@@ -54,7 +54,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </button>
       </aside>
 
-      <main className={`min-w-0 flex-1 overflow-y-auto ${!isAddPage ? 'pb-nav lg:pb-0' : ''}`}>
+      <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${!isAddPage ? 'pb-nav lg:pb-0' : ''}`}>
         <ReminderToast />
         {children}
       </main>

@@ -3,7 +3,7 @@ import { ChevronRight, Receipt, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useCategoryStore } from '@/store/categoryStore';
-import { useExpenseStore } from '@/store/expenseStore';
+import { isCreditTransaction, useExpenseStore } from '@/store/expenseStore';
 import { formatCurrency, formatTime, getRelativeDate } from '@/utils/formatters';
 
 export default function RecentTransactions() {
@@ -66,6 +66,7 @@ export default function RecentTransactions() {
       >
         {recentExpenses.map((expense) => {
           const category = getCategoryById(expense.categoryId);
+          const isCredit = isCreditTransaction(expense);
           return (
             <motion.div
               key={expense.id}
@@ -78,11 +79,11 @@ export default function RecentTransactions() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">
-                    {expense.note || category?.name || 'Unknown'}
+                    {expense.note || expense.description || category?.name || 'Unknown'}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
                     <Receipt size={11} />
-                    {category?.name || 'Unknown'} ·{' '}
+                    {category?.name || 'Unknown'} · {isCredit ? 'Credit' : 'Debit'} ·{' '}
                     {getRelativeDate(new Date(expense.date))} at{' '}
                     {formatTime(expense.date)}
                   </p>
@@ -90,8 +91,8 @@ export default function RecentTransactions() {
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-sm font-bold text-white">
-                  -{formatCurrency(expense.amount)}
+                <span className={`text-sm font-bold ${isCredit ? 'text-emerald-300' : 'text-white'}`}>
+                  {isCredit ? '+' : '-'}{formatCurrency(expense.amount)}
                 </span>
                 <button
                   onClick={() => deleteExpense(expense.id)}

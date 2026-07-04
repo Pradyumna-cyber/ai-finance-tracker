@@ -13,15 +13,16 @@ export default function BudgetSummary() {
     getActiveDeductionsTotal, 
     getDisposableBudget 
   } = useBudgetStore();
-  const { getTotalForSalaryCycle } = useExpenseStore();
+  const { getTotalForSalaryCycle, getNetTotalForSalaryCycle } = useExpenseStore();
 
   const today = new Date();
   const cycle = getSalaryCycleForDate(today, salaryCreditType, fixedCreditDate);
   
   const disposableBudget = getDisposableBudget();
   const currentCycleSpent = getTotalForSalaryCycle(cycle.id);
+  const netCashFlow = getNetTotalForSalaryCycle(cycle.id);
   const totalDeductions = getActiveDeductionsTotal();
-  const balanceAfterExpenses = Math.max(0, disposableBudget - currentCycleSpent);
+  const balanceAfterExpenses = Math.max(0, disposableBudget + netCashFlow);
   
   const spentPercent = disposableBudget > 0 ? Math.min(100, (currentCycleSpent / disposableBudget) * 100) : 0;
 

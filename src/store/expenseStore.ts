@@ -6,29 +6,43 @@ import { getSalaryCycleForDate } from '@/utils/salaryCycle';
 
 interface ExpenseStore {
   expenses: Expense[];
-  addExpense: (expense: Omit<Expense, 'salaryCycleId'> & { salaryCycleId?: string }) => void;
+  addExpense: (expense: Omit<Expense, 'salaryCycleId' | 'type'> & { salaryCycleId?: string; type?: Expense['type'] }) => void;
   updateExpense: (id: ExpenseId, expense: Partial<Expense>) => void;
   deleteExpense: (id: ExpenseId) => void;
   getExpenseById: (id: ExpenseId) => Expense | undefined;
   getExpensesByMonth: (date: Date) => Expense[];
+  getDebitExpensesByMonth: (date: Date) => Expense[];
   getExpensesBySalaryCycle: (cycleId: string) => Expense[];
+  getDebitExpensesBySalaryCycle: (cycleId: string) => Expense[];
   getRecentExpenses: (limit: number) => Expense[];
   getTotalByCategory: (categoryId: string) => number;
   getTotalMonthly: (date: Date) => number;
   getTotalForSalaryCycle: (cycleId: string) => number;
+  getCreditTotalForSalaryCycle: (cycleId: string) => number;
+  getNetTotalForSalaryCycle: (cycleId: string) => number;
   recalculateSalaryCycleIds: () => void;
 }
+
+export const isCreditTransaction = (expense: Pick<Expense, 'type'>) =>
+  expense.type === 'credit';
+
+export const isDebitTransaction = (expense: Pick<Expense, 'type'>) =>
+  !isCreditTransaction(expense);
+
+export const getTransactionSignedAmount = (expense: Pick<Expense, 'amount' | 'type'>) =>
+  isCreditTransaction(expense) ? expense.amount : -expense.amount;
 
 export const useExpenseStore = create<ExpenseStore>()(
   persist(
     (set, get) => ({
       expenses: [],
 
-      addExpense: (expense: Omit<Expense, 'salaryCycleId'> & { salaryCycleId?: string }) => {
+      addExpense: (expense: Omit<Expense, 'salaryCycleId' | 'type'> & { salaryCycleId?: string; type?: Expense['type'] }) => {
         const { salaryCreditType, fixedCreditDate } = useBudgetStore.getState();
         const cycle = getSalaryCycleForDate(new Date(expense.date), salaryCreditType, fixedCreditDate);
         const expenseWithCycle = {
           ...expense,
+          type: expense.type || 'debit',
           salaryCycleId: expense.salaryCycleId || cycle.id,
         };
         set((state) => ({
@@ -71,8 +85,16 @@ export const useExpenseStore = create<ExpenseStore>()(
         });
       },
 
+      getDebitExpensesByMonth: (date: Date) => {
+        return get().getExpensesByMonth(date).filter(isDebitTransaction);
+      },
+
       getExpensesBySalaryCycle: (cycleId: string) => {
         return get().expenses.filter((exp) => exp.salaryCycleId === cycleId);
+      },
+
+      getDebitExpensesBySalaryCycle: (cycleId: string) => {
+        return get().getExpensesBySalaryCycle(cycleId).filter(isDebitTransaction);
       },
 
       getRecentExpenses: (limit: number) => {
@@ -83,20 +105,33 @@ export const useExpenseStore = create<ExpenseStore>()(
 
       getTotalByCategory: (categoryId: string) => {
         return get().expenses
-          .filter((exp) => exp.categoryId === categoryId)
+          .filter((exp) => exp.categoryId === categoryId && isDebitTransaction(exp))
           .reduce((total, exp) => total + exp.amount, 0);
       },
 
       getTotalMonthly: (date: Date) => {
         return get()
-          .getExpensesByMonth(date)
+          .getDebitExpensesByMonth(date)
           .reduce((total, exp) => total + exp.amount, 0);
       },
 
       getTotalForSalaryCycle: (cycleId: string) => {
         return get()
-          .getExpensesBySalaryCycle(cycleId)
+          .getDebitExpensesBySalaryCycle(cycleId)
           .reduce((total, exp) => total + exp.amount, 0);
+      },
+
+      getCreditTotalForSalaryCycle: (cycleId: string) => {
+        return get()
+          .getExpensesBySalaryCycle(cycleId)
+          .filter(isCreditTransaction)
+          .reduce((total, exp) => total + exp.amount, 0);
+      },
+
+      getNetTotalForSalaryCycle: (cycleId: string) => {
+        return get()
+          .getExpensesBySalaryCycle(cycleId)
+          .reduce((total, exp) => total + getTransactionSignedAmount(exp), 0);
       },
 
       recalculateSalaryCycleIds: () => {
@@ -115,17 +150,21 @@ export const useExpenseStore = create<ExpenseStore>()(
     }),
     {
       name: 'expense-store',
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
-        if (version < 2) {
+        if (version < 3) {
           const state = persistedState as any;
           if (state && Array.isArray(state.expenses)) {
             state.expenses = state.expenses.map((exp: any) => {
+              const normalizedExpense = {
+                ...exp,
+                type: exp.type === 'credit' ? 'credit' : 'debit',
+              };
               if (!exp.salaryCycleId) {
                 const cycle = getSalaryCycleForDate(new Date(exp.date), 'last_working_day', 1);
-                return { ...exp, salaryCycleId: cycle.id };
+                return { ...normalizedExpense, salaryCycleId: cycle.id };
               }
-              return exp;
+              return normalizedExpense;
             });
           }
           return state;

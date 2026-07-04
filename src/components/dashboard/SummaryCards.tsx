@@ -6,15 +6,17 @@ import { formatCurrency } from "@/utils/formatters";
 
 export default function SummaryCards() {
   const { monthlySalary, salaryCreditType, fixedCreditDate, getDisposableBudget } = useBudgetStore();
-  const { getExpensesBySalaryCycle } = useExpenseStore();
+  const { getExpensesBySalaryCycle, getTotalForSalaryCycle, getCreditTotalForSalaryCycle, getNetTotalForSalaryCycle } = useExpenseStore();
   const cycle = getSalaryCycleForDate(new Date(), salaryCreditType, fixedCreditDate);
-  const cycleExpenses = getExpensesBySalaryCycle(cycle.id);
-  const totalSpent = cycleExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const cycleTransactions = getExpensesBySalaryCycle(cycle.id);
+  const totalSpent = getTotalForSalaryCycle(cycle.id);
+  const totalCredits = getCreditTotalForSalaryCycle(cycle.id);
+  const netCashFlow = getNetTotalForSalaryCycle(cycle.id);
   const disposableBudget = getDisposableBudget();
   const daysLeft = Math.max(0, getCalendarDayDiff(new Date(), cycle.nextSalaryDate));
   const avgDailySpend = totalSpent / Math.max(1, getCalendarDayDiff(cycle.startDate, new Date()) + 1);
 
-  const remainingBalance = disposableBudget - totalSpent;
+  const remainingBalance = disposableBudget + netCashFlow;
 
   const spentPercentage =
     disposableBudget > 0
@@ -54,7 +56,7 @@ export default function SummaryCards() {
       title: "Remaining",
       value: formatCurrency(remainingBalance),
       icon: PiggyBank,
-      sub: "Disposable balance",
+      sub: totalCredits > 0 ? `${formatCurrency(totalCredits)} credited` : "Disposable balance",
       tone: "emerald",
     },
     {
@@ -67,7 +69,7 @@ export default function SummaryCards() {
     },
     {
       title: "Transactions",
-      value: cycleExpenses.length.toString(),
+      value: cycleTransactions.length.toString(),
       icon: Hash,
       sub: "Recorded this cycle",
       tone: "cyan",

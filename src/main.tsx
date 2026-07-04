@@ -12,7 +12,7 @@ function Root() {
   const { darkMode } = useThemeStore();
 
   return (
-    <div className={darkMode ? "dark" : ""}>
+    <div className={`h-full ${darkMode ? "dark" : ""}`}>
       <App />
     </div>
   );
@@ -25,4 +25,3 @@ ReactDOM.createRoot(
     <Root />
   </React.StrictMode>
 );
-

@@ -1,6 +1,7 @@
 import { useBudgetStore } from '@/store/budgetStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useExpenseStore } from '@/store/expenseStore';
+import { getTransactionSignedAmount, isDebitTransaction } from '@/store/expenseStore';
 import { SalaryInsightInput } from '@/ai/schemas/salaryInsightSchema';
 import { formatDateShort } from '@/utils/formatters';
 import { getCalendarDayDiff, getSalaryCycleForDate } from '@/utils/salaryCycle';
@@ -15,12 +16,14 @@ export function buildSalaryInsightInput(date: Date = new Date()): SalaryInsightI
   previousCycleDate.setDate(previousCycleDate.getDate() - 1);
   const previousCycle = getSalaryCycleForDate(previousCycleDate, salaryCreditType, fixedCreditDate);
 
-  const currentCycleExpenses = expenses.filter((expense) => expense.salaryCycleId === currentCycle.id);
-  const previousCycleExpenses = expenses.filter((expense) => expense.salaryCycleId === previousCycle.id);
+  const currentCycleTransactions = expenses.filter((expense) => expense.salaryCycleId === currentCycle.id);
+  const currentCycleExpenses = currentCycleTransactions.filter(isDebitTransaction);
+  const previousCycleExpenses = expenses.filter((expense) => expense.salaryCycleId === previousCycle.id && isDebitTransaction(expense));
 
   const spent = currentCycleExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const previousCycleSpent = previousCycleExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const remaining = Math.max(0, monthlySalary - spent);
+  const netCashFlow = currentCycleTransactions.reduce((sum, expense) => sum + getTransactionSignedAmount(expense), 0);
+  const remaining = Math.max(0, monthlySalary + netCashFlow);
   const totalCycleDays = Math.max(1, getCalendarDayDiff(currentCycle.startDate, currentCycle.nextSalaryDate));
   const elapsedDays = Math.max(1, getCalendarDayDiff(currentCycle.startDate, date) + 1);
   const daysUntilSalary = Math.max(0, getCalendarDayDiff(date, currentCycle.nextSalaryDate));

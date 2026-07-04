@@ -100,6 +100,30 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: '📚',
     color: 'from-blue-600 to-indigo-600',
   },
+  {
+    id: 'refund',
+    name: 'Refund',
+    icon: '↩️',
+    color: 'from-emerald-500 to-teal-500',
+  },
+  {
+    id: 'cashback',
+    name: 'Cashback',
+    icon: '🏷️',
+    color: 'from-cyan-500 to-emerald-500',
+  },
+  {
+    id: 'income',
+    name: 'Income',
+    icon: '💵',
+    color: 'from-green-500 to-lime-500',
+  },
+  {
+    id: 'reimbursement',
+    name: 'Reimbursement',
+    icon: '🧾',
+    color: 'from-sky-500 to-teal-500',
+  },
 ];
 
 export const CATEGORY_ICONS = [
@@ -221,6 +245,20 @@ export const useCategoryStore =
             return;
           }
 
+          const missingDefaultCategories = DEFAULT_CATEGORIES.filter(
+            (defaultCategory) => !categories.some((category) => category.id === defaultCategory.id)
+          );
+
+          if (missingDefaultCategories.length > 0) {
+            set({
+              categories: refineCategoryPresentations([
+                ...categories,
+                ...missingDefaultCategories,
+              ]),
+            });
+            return;
+          }
+
           // Check if any category is missing icon/color or if colors are duplicated
           const colorCounts: Record<string, number> = {};
           let hasMissing = false;
@@ -240,12 +278,18 @@ export const useCategoryStore =
       }),
       {
         name: 'category-store',
-        version: 3,
+        version: 4,
         migrate: (persistedState: any, version: number) => {
-          if (version < 3 && Array.isArray(persistedState?.categories)) {
+          if (version < 4 && Array.isArray(persistedState?.categories)) {
+            const categories = [...persistedState.categories];
+            DEFAULT_CATEGORIES.forEach((defaultCategory) => {
+              if (!categories.some((category: Category) => category.id === defaultCategory.id)) {
+                categories.push(defaultCategory);
+              }
+            });
             return {
               ...persistedState,
-              categories: refineCategoryPresentations(persistedState.categories),
+              categories: refineCategoryPresentations(categories),
             };
           }
           return persistedState;

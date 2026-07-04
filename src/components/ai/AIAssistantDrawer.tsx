@@ -12,7 +12,7 @@ import {
   Send,
 } from "lucide-react";
 
-import { useExpenseStore } from "@/store/expenseStore";
+import { isDebitTransaction, useExpenseStore } from "@/store/expenseStore";
 import { useBudgetStore } from "@/store/budgetStore";
 import { useUserStore } from "@/store/userStore";
 
@@ -206,7 +206,8 @@ export default function AIAssistantDrawer({
       salaryCreditType,
       fixedCreditDate
     );
-    const currentCycleExpenses = expenses.filter(
+    const debitExpenses = expenses.filter(isDebitTransaction);
+    const currentCycleExpenses = debitExpenses.filter(
       (expense) =>
         expense.salaryCycleId === currentCycle.id
     );
@@ -216,7 +217,7 @@ export default function AIAssistantDrawer({
       expensesToAnalyze:
         currentCycleExpenses.length > 0
           ? currentCycleExpenses
-          : expenses,
+          : debitExpenses,
     };
   };
 
@@ -262,7 +263,7 @@ export default function AIAssistantDrawer({
             matchedCategory?.name || "Other",
           amount: expense.amount,
           date: expense.date,
-          note: expense.note,
+          note: expense.note || expense.description,
         };
       });
 
@@ -352,7 +353,10 @@ Reply in plain, human-friendly language. Keep the answer to 1-3 short sentences.
       setShowAllQuestions(false);
       setIsChatExpanded(false);
 
-      if (!expenses.length) {
+      const { expensesToAnalyze } =
+        getExpensesToAnalyze();
+
+      if (!expensesToAnalyze.length) {
         setAnalysis({
           success: false,
           analysis:
@@ -361,9 +365,6 @@ Reply in plain, human-friendly language. Keep the answer to 1-3 short sentences.
         setCategoryData([]);
         return;
       }
-
-      const { expensesToAnalyze } =
-        getExpensesToAnalyze();
 
      const formattedExpenses =
   expensesToAnalyze.map((expense) => {
@@ -382,7 +383,7 @@ Reply in plain, human-friendly language. Keep the answer to 1-3 short sentences.
 
       amount: expense.amount,
       date: expense.date,
-      note: expense.note,
+      note: expense.note || expense.description,
     };
   });
 

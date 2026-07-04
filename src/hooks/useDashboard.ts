@@ -3,6 +3,7 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useBudgetStore } from '@/store/budgetStore';
 import { CategoryExpense, Expense } from '@/types';
 import { getSalaryCycleForDate, getRecentSalaryCycles } from '@/utils/salaryCycle';
+import { getTransactionSignedAmount, isDebitTransaction } from '@/store/expenseStore';
 
 export const useDashboard = (date: Date) => {
   const { expenses } = useExpenseStore();
@@ -10,8 +11,10 @@ export const useDashboard = (date: Date) => {
   const { salaryCreditType, fixedCreditDate } = useBudgetStore();
 
   const cycle = getSalaryCycleForDate(date, salaryCreditType, fixedCreditDate);
-  const cycleExpenses = expenses.filter((e) => e.salaryCycleId === cycle.id);
+  const cycleTransactions = expenses.filter((e) => e.salaryCycleId === cycle.id);
+  const cycleExpenses = cycleTransactions.filter(isDebitTransaction);
   const totalCycle = cycleExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const netCycle = cycleTransactions.reduce((sum, e) => sum + getTransactionSignedAmount(e), 0);
 
   const categoryExpenses: CategoryExpense[] = categories
     .map((cat) => {
@@ -31,16 +34,18 @@ export const useDashboard = (date: Date) => {
     .sort((a, b) => b.total - a.total);
 
   const topCategory = categoryExpenses[0];
-  const recentExpenses = [...cycleExpenses]
+  const recentExpenses = [...cycleTransactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
   return {
     totalCycle: totalCycle,
+    netCycle,
     categoryExpenses,
     topCategory: topCategory || null,
     recentExpenses,
     expenseCount: cycleExpenses.length,
+    transactionCount: cycleTransactions.length,
     cycleName: cycle.name,
   };
 };
@@ -50,7 +55,7 @@ export const useExpensesByCategory = (expenses: Expense[]) => {
 
   return categories
     .map((cat) => {
-      const categoryExpenses = expenses.filter((e) => e.categoryId === cat.id);
+      const categoryExpenses = expenses.filter((e) => e.categoryId === cat.id && isDebitTransaction(e));
       const total = categoryExpenses.reduce((sum, e) => sum + e.amount, 0);
       return {
         category: cat,
@@ -72,7 +77,7 @@ export const useMonthlyTrend = (months: number = 6) => {
   // Reverse to make it chronological (left to right in charts)
   return recentCycles.reverse().map((cycle) => {
     const total = expenses
-      .filter((exp) => exp.salaryCycleId === cycle.id)
+      .filter((exp) => exp.salaryCycleId === cycle.id && isDebitTransaction(exp))
       .reduce((sum, exp) => sum + exp.amount, 0);
 
     const parts = cycle.id.split('-');
@@ -106,8 +111,8 @@ export const useExpenseStats = () => {
     fixedCreditDate
   );
 
-  const currentCycleExpenses = expenses.filter((e) => e.salaryCycleId === currentCycle.id);
-  const previousCycleExpenses = expenses.filter((e) => e.salaryCycleId === previousCycle.id);
+  const currentCycleExpenses = expenses.filter((e) => e.salaryCycleId === currentCycle.id && isDebitTransaction(e));
+  const previousCycleExpenses = expenses.filter((e) => e.salaryCycleId === previousCycle.id && isDebitTransaction(e));
 
   const currentCycleTotal = currentCycleExpenses.reduce((sum, e) => sum + e.amount, 0);
   const previousCycleTotal = previousCycleExpenses.reduce((sum, e) => sum + e.amount, 0);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { analyzeExpenses } from "@/services/aiServices";
-import { useExpenseStore } from "@/store/expenseStore";
+import { isDebitTransaction, useExpenseStore } from "@/store/expenseStore";
 
 export default function AIInsights() {
   const [loading, setLoading] = useState(false);
@@ -12,12 +12,14 @@ export default function AIInsights() {
     try {
       setLoading(true);
 
-      if (!expenses.length) {
+      const debitExpenses = expenses.filter(isDebitTransaction);
+
+      if (!debitExpenses.length) {
         setAnalysis("No expenses available to analyze.");
         return;
       }
 
-      const formattedExpenses = expenses.map((expense) => ({
+      const formattedExpenses = debitExpenses.map((expense) => ({
         category: expense.categoryId || "Other",
         amount: expense.amount,
         date: expense.date,

@@ -7,13 +7,13 @@ import { Calendar, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 
 export default function SalaryCycleCard() {
   const { monthlySalary, salaryCreditType, fixedCreditDate } = useBudgetStore();
-  const { getTotalForSalaryCycle } = useExpenseStore();
+  const { getTotalForSalaryCycle, getNetTotalForSalaryCycle } = useExpenseStore();
   const today = new Date();
   const cycle = getSalaryCycleForDate(today, salaryCreditType, fixedCreditDate);
 
   const totalSalary = monthlySalary;
   const spent = getTotalForSalaryCycle(cycle.id);
-  const remaining = Math.max(0, totalSalary - spent);
+  const remaining = Math.max(0, totalSalary + getNetTotalForSalaryCycle(cycle.id));
   const totalDays = Math.max(1, getCalendarDayDiff(cycle.startDate, cycle.nextSalaryDate));
   const elapsedDays = Math.max(1, getCalendarDayDiff(cycle.startDate, today) + 1);
   const daysRemaining = Math.max(0, getCalendarDayDiff(today, cycle.nextSalaryDate));

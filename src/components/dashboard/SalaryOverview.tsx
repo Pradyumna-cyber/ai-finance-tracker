@@ -7,13 +7,15 @@ import { getSalaryCycleForDate } from "@/utils/salaryCycle";
 
 export default function SalaryOverview() {
   const { monthlySalary, salaryCreditType, fixedCreditDate, getActiveDeductionsTotal, getDisposableBudget } = useBudgetStore();
-  const { getTotalForSalaryCycle } = useExpenseStore();
+  const { getTotalForSalaryCycle, getCreditTotalForSalaryCycle, getNetTotalForSalaryCycle } = useExpenseStore();
   const cycle = getSalaryCycleForDate(new Date(), salaryCreditType, fixedCreditDate);
   const totalSpent = getTotalForSalaryCycle(cycle.id);
+  const totalCredits = getCreditTotalForSalaryCycle(cycle.id);
+  const netCashFlow = getNetTotalForSalaryCycle(cycle.id);
   const disposableBudget = getDisposableBudget();
   const deductions = getActiveDeductionsTotal();
 
-  const remainingBalance = disposableBudget - totalSpent;
+  const remainingBalance = disposableBudget + netCashFlow;
 
   const spentPercentage =
     disposableBudget > 0
@@ -54,7 +56,7 @@ export default function SalaryOverview() {
           </h2>
 
           <p className="mt-1 text-sm text-slate-400">
-            Available after recurring deductions
+            Available after deductions and credits
           </p>
         </div>
 
@@ -149,8 +151,8 @@ export default function SalaryOverview() {
           <h3 className="mt-1 text-lg font-semibold text-white">₹{safeDailySpend.toFixed(0)}</h3>
         </div>
         <div className="soft-panel p-3">
-          <p className="text-xs text-slate-500">Spent this cycle</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">₹{totalSpent.toLocaleString()}</h3>
+          <p className="text-xs text-slate-500">Credits this cycle</p>
+          <h3 className="mt-1 text-lg font-semibold text-emerald-300">₹{totalCredits.toLocaleString()}</h3>
         </div>
       </div>
 
