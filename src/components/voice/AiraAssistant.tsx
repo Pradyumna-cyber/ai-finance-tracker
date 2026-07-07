@@ -398,9 +398,6 @@ export default function AiraAssistant() {
               <Mic size={22} />
             </div>
             <p className="mt-3 text-lg font-semibold text-white">Welcome to {ASSISTANT_NAME}</p>
-            <p className="mt-2 text-sm text-slate-300">Click the microphone and start speaking.</p>
-            <p className="mt-1 text-xl font-bold text-cyan-200">No wake word needed</p>
-            <p className="mt-3 text-sm font-medium text-emerald-200">Microphone ready</p>
           </motion.div>
         ) : null}
       </AnimatePresence>

@@ -15,6 +15,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isAddPage = location.pathname === '/add';
+  const isAskAIPage = location.pathname === '/ask-ai';
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/add', icon: Plus, label: 'Add Transaction' },
@@ -59,7 +60,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {children}
       </main>
 
-      <AiraAssistant />
+      {!isAskAIPage && <AiraAssistant />}
       <BottomNavigation />
     </div>
   );
