@@ -29,7 +29,7 @@ interface AiraUiState {
   pendingExpense: PendingVoiceExpense | null;
   error: string | null;
 }
-
+const WELCOME_SHOWN_KEY = 'airaWelcomeShown';
 const initialState: AiraUiState = {
   mode: 'idle',
   transcript: '',
@@ -76,7 +76,17 @@ export default function AiraAssistant() {
 
   const [supportsVoice, setSupportsVoice] = useState(() => VoiceRecognitionService.isSupported());
   const [state, setState] = useState<AiraUiState>(initialState);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !Boolean(window.localStorage.getItem(WELCOME_SHOWN_KEY));
+  });
+
+  const markWelcomeSeen = useCallback(() => {
+    setShowWelcome(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(WELCOME_SHOWN_KEY, 'true');
+    }
+  }, []);
 
   const financeContext = useMemo(
     () => ({
@@ -342,10 +352,21 @@ export default function AiraAssistant() {
       },
     }, { continuous: true, interimResults: true });
     setSupportsVoice(VoiceRecognitionService.isSupported());
-    const welcomeTimer = window.setTimeout(() => setShowWelcome(false), 2600);
+
+    if (!window.localStorage.getItem(WELCOME_SHOWN_KEY)) {
+      const welcomeTimer = window.setTimeout(() => {
+        markWelcomeSeen();
+      }, 2600);
+
+      return () => {
+        window.clearTimeout(welcomeTimer);
+        clearSilenceTimer();
+        recognitionRef.current?.cancel();
+        ttsRef.current?.cancel();
+      };
+    }
 
     return () => {
-      window.clearTimeout(welcomeTimer);
       clearSilenceTimer();
       recognitionRef.current?.cancel();
       ttsRef.current?.cancel();
@@ -367,7 +388,7 @@ export default function AiraAssistant() {
     suppressRecognitionRestartRef.current = false;
     greetedRef.current = false;
     ttsRef.current?.cancel();
-    setShowWelcome(false);
+    markWelcomeSeen();
     startListening('command');
   };
 
