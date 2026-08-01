@@ -48,13 +48,15 @@ export default function RecentTransactions() {
       <div className="mb-4 flex items-end justify-between">
         <div>
           <p className="eyebrow">Latest activity</p>
-          <h3 className="section-title mt-1">Recent transactions</h3>
+          <Link to="/transactions" className="section-title mt-1 inline-block hover:text-cyan-200">
+            Recent transactions
+          </Link>
         </div>
         <Link
-          to="/reports"
+          to="/transactions"
           className="flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300"
         >
-          View All <ChevronRight size={14} />
+          View all <ChevronRight size={14} />
         </Link>
       </div>
 

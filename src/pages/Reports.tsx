@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarRange, Download, Receipt, Wallet, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -42,7 +42,7 @@ const escapeCsvValue = (value: string | number) =>
   `"${String(value).replace(/"/g, '""')}"`;
 
 export default function Reports() {
-  const { expenses, getExpensesBySalaryCycle } = useExpenseStore();
+  const { expenses } = useExpenseStore();
   const { categories } = useCategoryStore();
   const { monthlySalary, salaryCreditType, fixedCreditDate } = useBudgetStore();
 
@@ -52,14 +52,23 @@ export default function Reports() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const selectedCycleDetails = getSalaryCycleById(selectedCycleId, salaryCreditType, fixedCreditDate);
+  const selectedCycleStartInput = formatDateInput(selectedCycleDetails.startDate);
+  const selectedCycleEndInput = formatDateInput(selectedCycleDetails.endDate);
   const [statementStartDate, setStatementStartDate] = useState(
-    formatDateInput(selectedCycleDetails.startDate)
+    selectedCycleStartInput
   );
   const [statementEndDate, setStatementEndDate] = useState(
-    formatDateInput(selectedCycleDetails.endDate)
+    selectedCycleEndInput
   );
 
-  const cycleTransactions = getExpensesBySalaryCycle(selectedCycleId);
+  // Use the actual cycle date range rather than a stored ID. This keeps older
+  // reports correct if the user's salary-credit settings have changed.
+  const cycleStartDate = parseDateInput(selectedCycleStartInput);
+  const cycleEndDate = parseDateInput(selectedCycleEndInput, true);
+  const cycleTransactions = expenses.filter((transaction) => {
+    const transactionDate = new Date(transaction.date);
+    return transactionDate >= cycleStartDate && transactionDate <= cycleEndDate;
+  });
   const cycleExpenses = cycleTransactions.filter(isDebitTransaction);
   const totalCycle = cycleExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const cycleCreditTotal = cycleTransactions
@@ -69,6 +78,14 @@ export default function Reports() {
     (sum, transaction) => sum + getTransactionSignedAmount(transaction),
     0
   );
+  const remainingBalance = Math.max(0, monthlySalary + netCycle);
+
+  // Selecting a report cycle must also select that exact cycle for the
+  // downloaded statement, including its start and end dates.
+  useEffect(() => {
+    setStatementStartDate(selectedCycleStartInput);
+    setStatementEndDate(selectedCycleEndInput);
+  }, [selectedCycleStartInput, selectedCycleEndInput]);
 
   const cycleDays = Math.max(1, getCalendarDayDiff(selectedCycleDetails.startDate, selectedCycleDetails.nextSalaryDate));
 
@@ -230,10 +247,19 @@ export default function Reports() {
             </span>
           </div>
           
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
-            {formatCurrency(totalCycle)}
-          </h2>
-          <p className="mb-3 mt-1 text-xs text-slate-500">
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-white">
+                {formatCurrency(totalCycle)}
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">Spent in this cycle</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Remaining balance</p>
+              <p className="mt-1 text-lg font-bold text-emerald-300">{formatCurrency(remainingBalance)}</p>
+            </div>
+          </div>
+          <p className="mb-3 mt-2 text-xs text-slate-500">
             {formatCurrency(cycleCreditTotal)} credited · {formatCurrency(netCycle)} net cash flow
           </p>
           <div className="grid grid-cols-2 gap-3">
@@ -265,7 +291,7 @@ export default function Reports() {
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><CalendarRange size={18} /></div>
             <h2 className="section-title">Export statement</h2>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Download salary, spending, credits, and transaction details for any date range.
+              Defaults to the selected salary cycle; you can still choose a custom date range.
             </p>
           </div>
 

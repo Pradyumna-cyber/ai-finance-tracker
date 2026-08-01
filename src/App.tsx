@@ -8,6 +8,7 @@ import AddExpense from '@/pages/AddExpense';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import Categories from '@/pages/Categories';
+import Transactions from '@/pages/Transactions';
 import AskAIPage from '@/pages/AskAIPage';
 import Onboarding from '@/pages/Onboarding';
 import SalaryReviewModal from '@/components/dashboard/SalaryReviewModal';
@@ -25,7 +26,8 @@ function App() {
       });
     }
 
-    const timer = window.setTimeout(() => setIsLoading(false), 1200);
+    // Keep the brand transition short while the persisted app state hydrates.
+    const timer = window.setTimeout(() => setIsLoading(false), 2400);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -85,6 +87,14 @@ function App() {
             element={
               <MainLayout>
                 <Categories />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <MainLayout>
+                <Transactions />
               </MainLayout>
             }
           />
